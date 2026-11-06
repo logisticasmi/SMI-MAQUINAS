@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="smi-bloqueado">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>SMI Máquinas — Estoque</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        [hidden] {
+            display: none !important;
+        }
+
+        .modelo-saldos {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        }
+
+        .modelo-saldos dt {
+            font-size: 10px;
+        }
+
+        .modelo-vendidas {
+            color: #aa92ff;
+        }
+
+        .painel-reserva {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 1100px) {
+            .painel-reserva {
+                max-height: none;
+            }
+        }
+
+        /* TELA DE ACESSO */
+
+        html.smi-bloqueado body > :not(#smiAcesso) {
+            display: none !important;
+        }
+
+        html:not(.smi-bloqueado) #smiAcesso {
+            display: none !important;
+        }
+
+        #smiAcesso {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: grid;
+            place-items: center;
+            overflow: auto;
+            padding: 24px;
+            box-sizing: border-box;
+            background: #061323;
+            color: #eef5ff;
+            font-family: Arial, sans-serif;
+        }
+
+        #smiAcesso .acesso-cartao {
+            width: 100%;
+            max-width: 400px;
+            padding: 32px;
+            box-sizing: border-box;
+            border: 1px solid #31536c;
+            border-radius: 18px;
+            background: #0d2239;
+            box-shadow: 0 20px 60px #0005;
+        }
+
+        #smiAcesso img {
+            display: block;
+            width: 190px;
+            max-width: 100%;
+            margin: 0 auto 28px;
+        }
+
+        #smiAcesso h1 {
+            margin: 0 0 8px;
+            font-size: 25px;
+            text-align: center;
+            color: #eef5ff;
+        }
+
+        #smiAcesso p {
+            color: #b9cce0;
+            text-align: center;
+        }
+
+        #smiAcesso label {
+            display: block;
+            margin: 16px 0 7px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #eef5ff;
+        }
+
+        #smiAcesso input {
+            width: 100%;
+            min-height: 46px;
+            padding: 11px 12px;
+            box-sizing: border-box;
+            border: 1px solid #46647d;
+            border-radius: 8px;
+            background: #10273e;
+            color: white;
+            font-size: 16px;
+        }
+
+        #smiAcesso input:focus {
+            outline: 2px solid #168aff;
+            outline-offset: 2px;
+        }
+
+        #smiAcesso button {
+            width: 100%;
+            min-height: 46px;
+            margin-top: 22px;
+            border: 0;
+            border-radius: 8px;
+            background: #087fff;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #smiAcesso button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        #smiAcesso #acessoMensagem {
+            min-height: 20px;
+            margin: 16px 0 0;
+            color: #ffc37d;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #smiSair {
+            margin-left: 12px;
+            padding: 8px 14px;
+            border: 1px solid #52718b;
+            border-radius: 8px;
+            background: #10273e;
+            color: white;
+            cursor: pointer;
+        }
+
+        @media (max-width: 480px) {
+            #smiAcesso .acesso-cartao {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOGIN -->
+
+    <section
+        id="smiAcesso"
+        aria-label="Acesso ao SMI Máquinas"
+    >
+        <div class="acesso-cartao">
+
+            <img
+                src="img/logo-smigroup.png"
+                alt="SMI Group"
+            >
+
+            <h1>SMI MÁQUINAS</h1>
+
+            <p>Entre para acessar o sistema.</p>
+
+            <form id="smiFormAcesso">
+
+                <label for="acessoEmail">E-mail</label>
+
+                <input
+                    id="acessoEmail"
+                    type="email"
+                    autocomplete="username"
+                    value="logistica.br@smigroup.net"
+                    required
+                >
+
+                <label for="acessoSenha">Senha</label>
+
+                <input
+                    id="acessoSenha"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Sua senha"
+                    required
+                >
+
+                <button
+                    id="acessoEntrar"
+                    type="submit"
+                    disabled
+                >
+                    Verificando acesso...
+                </button>
+
+                <p
+                    id="acessoMensagem"
+                    role="status"
+                    aria-live="polite"
+                >
+                    Carregando acesso. Se esta mensagem permanecer,
+                    confira a internet e recarregue a página.
+                </p>
+
+            </form>
+
+            <noscript>
+                Ative o JavaScript para entrar no sistema.
+            </noscript>
+
+        </div>
+    </section>
+
+    <!-- MENU -->
+
+    <aside class="sidebar">
+
+        <a class="marca" href="index.html" aria-label="SMI Máquinas">
+            <strong>SMI</strong>
+            <span>MÁQUINAS</span>
+        </a>
+
+        <p class="sidebar-descricao">
+            Controle de estoque de máquinas
+        </p>
+
+        <nav class="menu" aria-label="Menu principal">
+
+            <button
+                type="button"
+                class="menu-item ativo"
+                data-tela="estoque"
+                aria-controls="telaEstoque"
+                aria-current="page"
+            >
+                Estoque
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-tela="entradas"
+                aria-controls="telaEntradas"
+            >
+                Entradas
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-tela="saidas"
+                aria-controls="telaSaidas"
+            >
+                Saídas
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-tela="reservas"
+                aria-controls="telaReservas"
+            >
+                Reservas
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-tela="relatorios"
+                aria-controls="telaRelatorios"
+            >
+                Relatórios
+            </button>
+
+        </nav>
+
+        <footer class="sidebar-rodape">
+            <span>SMI DO BRASIL</span>
+            <small>Gestão de máquinas</small>
+        </footer>
+
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="cabecalho">
+
+            <div>
+                <p class="sobretitulo">SMI MÁQUINAS</p>
+                <h1 id="tituloPagina">Estoque de máquinas</h1>
+            </div>
+
+            <div class="cabecalho-acoes">
+
+                <span id="usuarioAtual"></span>
+
+                <button
+                    type="button"
+                    id="btnAtualizar"
+                    class="btn btn-secundario"
+                >
+                    Atualizar
+                </button>
+
+            </div>
+
+        </header>
+
+        <div
+            id="mensagemSistema"
+            class="mensagem-sistema"
+            role="status"
+            aria-live="polite"
+            hidden
+        ></div>
+
+        <!-- INDICADORES -->
+
+        <section class="indicadores" aria-label="Resumo do estoque">
+
+            <article class="indicador">
+                <span class="indicador-titulo">Total em estoque</span>
+                <strong id="totalEstoque">0</strong>
+                <small>Disponíveis + reservadas</small>
+            </article>
+
+            <article class="indicador indicador-verde">
+                <span class="indicador-titulo">Disponível</span>
+                <strong id="totalDisponiveis">0</strong>
+                <small>Liberadas para reserva ou venda</small>
+            </article>
+
+            <article class="indicador indicador-amarelo">
+                <span class="indicador-titulo">Reservado</span>
+                <strong id="totalReservadas">0</strong>
+                <small>Reservas dentro do prazo</small>
+            </article>
+
+            <article class="indicador indicador-roxo">
+                <span class="indicador-titulo">Vendido</span>
+                <strong id="totalVendidas">0</strong>
+                <small>Vendas acumuladas</small>
+                <span id="totalModelos" hidden></span>
+            </article>
+
+        </section>
+
+        <!-- ESTOQUE -->
+
+        <section id="telaEstoque" class="tela">
+
+            <div class="estoque-layout">
+
+                <section
+                    class="catalogo"
+                    aria-labelledby="tituloCatalogo"
+                >
+
+                    <div class="secao-cabecalho">
+                        <div>
+
+                            <h2 id="tituloCatalogo">
+                                Catálogo de máquinas
+                            </h2>
+
+                            <p>
+                                Controle por modelo e quantidade.
+                                Número de série informado na reserva ou venda.
+                            </p>
+
+                        </div>
+                    </div>
+
+                    <div class="catalogo-filtros">
+
+                        <div class="campo campo-busca">
+
+                            <label for="buscaModelo">
+                                Buscar modelo
+                            </label>
+
+                            <input
+                                type="search"
+                                id="buscaModelo"
+                                placeholder="Digite o modelo..."
+                                autocomplete="off"
+                            >
+
+                        </div>
+
+                        <div class="campo">
+
+                            <label for="filtroDisponibilidade">
+                                Disponibilidade
+                            </label>
+
+                            <select id="filtroDisponibilidade">
+
+                                <option value="todos">
+                                    Todos os modelos
+                                </option>
+
+                                <option value="disponiveis">
+                                    Com saldo disponível
+                                </option>
+
+                                <option value="reservadas">
+                                    Com reservas
+                                </option>
+
+                                <option value="vendidas">
+                                    Com vendas
+                                </option>
+
+                                <option value="sem-estoque">
+                                    Sem estoque
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                    <p
+                        id="statusCatalogo"
+                        class="texto-auxiliar"
+                        role="status"
+                    >
+                        Aguardando carregamento.
+                    </p>
+
+                    <div
+                        id="listaModelos"
+                        class="grade-modelos"
+                    ></div>
+
+                    <p
+                        id="catalogoVazio"
+                        class="estado-vazio"
+                        hidden
+                    >
+                        Nenhum modelo encontrado.
+                    </p>
+
+                    <div class="paginacao">
+
+                        <span id="resumoPaginacao"></span>
+
+                        <nav
+                            id="botoesPaginacao"
+                            aria-label="Páginas do catálogo"
+                        ></nav>
+
+                    </div>
+
+                </section>
+
+                <!-- REGISTRO DA MÁQUINA -->
+
+                <aside
+                    class="painel-reserva"
+                    aria-labelledby="tituloReserva"
+                >
+
+                    <div class="painel-cabecalho">
+                        <h2 id="tituloReserva">Registrar máquina</h2>
+                    </div>
+
+                    <p
+                        id="orientacaoReserva"
+                        class="texto-auxiliar"
+                    >
+                        Selecione um modelo no catálogo.
+                    </p>
+
+                    <form id="formReserva">
+
+                        <input
+                            type="hidden"
+                            id="reservaModeloId"
+                        >
+
+                        <fieldset id="camposReserva" disabled>
+
+                            <legend>Dados da máquina</legend>
+
+                            <div class="campo">
+
+                                <label for="reservaVendedor">
+                                    Vendedor *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaVendedor"
+                                    maxlength="120"
+                                    required
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaCliente">
+                                    Cliente *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaCliente"
+                                    maxlength="160"
+                                    required
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaModelo">
+                                    Máquina
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaModelo"
+                                    readonly
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaCodigo">
+                                    Código *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaCodigo"
+                                    maxlength="80"
+                                    required
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaSerie">
+                                    S/N *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaSerie"
+                                    maxlength="120"
+                                    autocomplete="off"
+                                    required
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaData">
+                                    Data da reserva *
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="reservaData"
+                                    required
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaVencimento">
+                                    Data limite reserva
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="reservaVencimento"
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaNF">
+                                    N° nota fiscal
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="reservaNF"
+                                    maxlength="80"
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaEmissao">
+                                    Data emissão
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="reservaEmissao"
+                                >
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaStatus">
+                                    Status *
+                                </label>
+
+                                <select id="reservaStatus" required>
+
+                                    <option value="ativa">
+                                        Reservado
+                                    </option>
+
+                                    <option value="disponivel">
+                                        Disponível
+                                    </option>
+
+                                    <option value="vendida">
+                                        Vendido
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="campo">
+
+                                <label for="reservaObservacoes">
+                                    Observações
+                                </label>
+
+                                <textarea
+                                    id="reservaObservacoes"
+                                    rows="3"
+                                    maxlength="1000"
+                                ></textarea>
+
+                            </div>
+
+                            <p class="aviso-reserva">
+                                Cada registro identifica uma unidade.
+                                Reservas vencidas liberam a máquina.
+                                Vendido dá baixa imediata no estoque.
+                            </p>
+
+                            <button
+                                type="submit"
+                                id="btnConfirmarReserva"
+                                class="btn btn-primario btn-largo"
+                            >
+                                Salvar registro
+                            </button>
+
+                            <button
+                                type="button"
+                                id="btnNovoRegistro"
+                                class="btn btn-secundario"
+                            >
+                                Novo registro
+                            </button>
+
+                        </fieldset>
+
+                        <p
+                            id="mensagemReserva"
+                            role="status"
+                            aria-live="polite"
+                        ></p>
+
+                    </form>
+
+                </aside>
+
+            </div>
+
+        </section>
+
+        <!-- ENTRADAS -->
+
+        <section id="telaEntradas" class="tela" hidden>
+
+            <div class="secao-cabecalho">
+                <div>
+                    <h2>Entrada de máquinas</h2>
+                    <p>Registre a quantidade recebida por modelo.</p>
+                </div>
+            </div>
+
+            <form id="formEntrada" class="card formulario">
+
+                <div class="campo">
+
+                    <label for="entradaModelo">Modelo *</label>
+
+                    <select id="entradaModelo" required>
+                        <option value="">Selecione o modelo</option>
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaQuantidade">
+                        Quantidade *
+                    </label>
+
+                    <input
+                        type="number"
+                        id="entradaQuantidade"
+                        min="1"
+                        step="1"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaData">
+                        Data da entrada *
+                    </label>
+
+                    <input
+                        type="date"
+                        id="entradaData"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaOrigem">Origem</label>
+
+                    <input
+                        type="text"
+                        id="entradaOrigem"
+                        maxlength="160"
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaNF">Nota fiscal</label>
+
+                    <input
+                        type="text"
+                        id="entradaNF"
+                        maxlength="80"
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaResponsavel">
+                        Responsável *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="entradaResponsavel"
+                        maxlength="120"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="entradaObservacoes">
+                        Observações
+                    </label>
+
+                    <textarea
+                        id="entradaObservacoes"
+                        rows="3"
+                        maxlength="1000"
+                    ></textarea>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-primario"
+                >
+                    Registrar entrada
+                </button>
+
+                <p id="mensagemEntrada" role="status"></p>
+
+            </form>
+
+            <h2>Histórico de entradas</h2>
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <caption>Entradas registradas</caption>
+
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Modelo</th>
+                            <th>Quantidade</th>
+                            <th>Origem</th>
+                            <th>NF</th>
+                            <th>Responsável</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="listaEntradas"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- SAÍDAS -->
+
+        <section id="telaSaidas" class="tela" hidden>
+
+            <div class="secao-cabecalho">
+                <div>
+
+                    <h2>Saída de máquinas</h2>
+
+                    <p>
+                        Para vender com todos os dados da máquina,
+                        utilize o formulário do catálogo ou
+                        Reservas → Editar / vender.
+                    </p>
+
+                </div>
+            </div>
+
+            <form id="formSaida" class="card formulario">
+
+                <div class="campo">
+
+                    <label for="saidaReserva">
+                        Reserva vinculada
+                    </label>
+
+                    <select id="saidaReserva">
+                        <option value="">Saída sem reserva</option>
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaModelo">Modelo *</label>
+
+                    <select id="saidaModelo" required>
+                        <option value="">Selecione o modelo</option>
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaQuantidade">
+                        Quantidade *
+                    </label>
+
+                    <input
+                        type="number"
+                        id="saidaQuantidade"
+                        min="1"
+                        step="1"
+                        value="1"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaData">
+                        Data da saída *
+                    </label>
+
+                    <input
+                        type="date"
+                        id="saidaData"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaCliente">
+                        Cliente / destino *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="saidaCliente"
+                        maxlength="160"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaNF">Nota fiscal</label>
+
+                    <input
+                        type="text"
+                        id="saidaNF"
+                        maxlength="80"
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaResponsavel">
+                        Responsável *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="saidaResponsavel"
+                        maxlength="120"
+                        required
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="saidaObservacoes">
+                        Observações
+                    </label>
+
+                    <textarea
+                        id="saidaObservacoes"
+                        rows="3"
+                        maxlength="1000"
+                    ></textarea>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-primario"
+                >
+                    Registrar saída
+                </button>
+
+                <p id="mensagemSaida" role="status"></p>
+
+            </form>
+
+            <h2>Histórico de saídas</h2>
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <caption>Saídas registradas</caption>
+
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Modelo</th>
+                            <th>Quantidade</th>
+                            <th>Cliente / destino</th>
+                            <th>NF</th>
+                            <th>Responsável</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="listaSaidas"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- RESERVAS -->
+
+        <section id="telaReservas" class="tela" hidden>
+
+            <div class="secao-cabecalho">
+                <div>
+
+                    <h2>Registros e reservas</h2>
+
+                    <p>
+                        Consulte os registros ou abra uma reserva para vender.
+                    </p>
+
+                </div>
+            </div>
+
+            <div class="catalogo-filtros">
+
+                <div class="campo">
+
+                    <label for="buscaReserva">
+                        Buscar registro
+                    </label>
+
+                    <input
+                        type="search"
+                        id="buscaReserva"
+                        placeholder="Cliente, modelo, vendedor, código ou série..."
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="filtroReserva">Status</label>
+
+                    <select id="filtroReserva">
+                        <option value="todas">Todos</option>
+                        <option value="ativa">Reservado</option>
+                        <option value="disponivel">Disponível</option>
+                        <option value="vendida">Vendido</option>
+                        <option value="expirada">Expirada</option>
+                        <option value="cancelada">Cancelada</option>
+                        <option value="concluida">Saída registrada</option>
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <caption>Controle das máquinas</caption>
+
+                    <thead>
+                        <tr>
+                            <th>Vendedor</th>
+                            <th>Cliente</th>
+                            <th>Máquina</th>
+                            <th>Código</th>
+                            <th>S/N</th>
+                            <th>Data da reserva</th>
+                            <th>Data limite reserva</th>
+                            <th>N° nota fiscal</th>
+                            <th>Data emissão</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="listaReservas"></tbody>
+
+                </table>
+
+            </div>
+
+            <p
+                id="reservasVazias"
+                class="estado-vazio"
+                hidden
+            >
+                Nenhum registro encontrado.
+            </p>
+
+        </section>
+
+        <!-- RELATÓRIOS -->
+
+        <section id="telaRelatorios" class="tela" hidden>
+
+            <div class="secao-cabecalho">
+                <div>
+                    <h2>Relatórios</h2>
+                    <p>Consulte e exporte os registros do sistema.</p>
+                </div>
+            </div>
+
+            <form id="formRelatorio" class="card formulario">
+
+                <div class="campo">
+
+                    <label for="relatorioTipo">Tipo</label>
+
+                    <select id="relatorioTipo">
+                        <option value="registros">
+                            Registros completos
+                        </option>
+                        <option value="estoque">Estoque atual</option>
+                        <option value="entradas">Entradas</option>
+                        <option value="saidas">Saídas</option>
+                        <option value="reservas">Reservas</option>
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="relatorioModelo">Modelo</label>
+
+                    <select id="relatorioModelo">
+                        <option value="">Todos os modelos</option>
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="relatorioInicio">De</label>
+
+                    <input
+                        type="date"
+                        id="relatorioInicio"
+                    >
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="relatorioFim">Até</label>
+
+                    <input
+                        type="date"
+                        id="relatorioFim"
+                    >
+
+                </div>
+
+                <p class="texto-auxiliar">
+                    Para estoque atual, o período não se aplica.
+                    Nos registros completos, o período considera
+                    a data da reserva ou do registro da saída.
+                </p>
+
+                <div class="formulario-acoes">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primario"
+                    >
+                        Consultar
+                    </button>
+
+                    <button
+                        type="button"
+                        id="btnExportarRelatorio"
+                        class="btn btn-secundario"
+                        disabled
+                    >
+                        Exportar CSV
+                    </button>
+
+                </div>
+
+            </form>
+
+            <div
+                id="resultadoRelatorio"
+                class="tabela-container"
+                aria-live="polite"
+            ></div>
+
+        </section>
+
+        <footer class="rodape">
+            SMI DO BRASIL — Controle de estoque de máquinas
+        </footer>
+
+    </main>
+
+    <!-- MODELO DOS CARDS -->
+
+    <template id="templateCardModelo">
+
+        <article class="card-modelo">
+
+            <div class="modelo-foto-container">
+
+                <img
+                    class="modelo-foto"
+                    alt=""
+                    loading="lazy"
+                    hidden
+                >
+
+                <span class="modelo-sem-foto">
+                    Foto a cadastrar
+                </span>
+
+            </div>
+
+            <div class="modelo-conteudo">
+
+                <h3 class="modelo-nome"></h3>
+
+                <dl class="modelo-saldos">
+
+                    <div>
+                        <dt>Total</dt>
+                        <dd class="modelo-total">0</dd>
+                    </div>
+
+                    <div>
+                        <dt>Disponível</dt>
+                        <dd class="modelo-disponiveis">0</dd>
+                    </div>
+
+                    <div>
+                        <dt>Reservado</dt>
+                        <dd class="modelo-reservadas">0</dd>
+                    </div>
+
+                    <div>
+                        <dt>Vendido</dt>
+                        <dd class="modelo-vendidas">0</dd>
+                    </div>
+
+                </dl>
+
+                <button
+                    type="button"
+                    class="btn btn-primario btn-reservar"
+                >
+                    Selecionar máquina
+                </button>
+
+            </div>
+
+        </article>
+
+    </template>
+
+    <!-- CARREGAR SOMENTE UMA VEZ E NESTA ORDEM -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="acesso.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
