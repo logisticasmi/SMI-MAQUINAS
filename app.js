@@ -87,6 +87,7 @@ const FOTOS_MODELOS = {
     "BP800AR 280ST": "img/bp800ar-280st.png",
     "BP802ARV 350R-S": "img/bp802arv-350r-s.png"
 };
+
 const CHAVE_DADOS = "smi_maquinas_teste_v1";
 const POR_PAGINA = 9;
 
@@ -224,6 +225,13 @@ function gravarDados(proximosDados) {
 }
 
 function executar(acao) {
+    if (
+        window.smiNuvem &&
+        (!window.smiNuvem.pronto || window.smiNuvem.ocupado)
+    ) {
+        return;
+    }
+
     try {
         atualizarDados();
         acao();
@@ -331,7 +339,15 @@ function expirarReservas() {
                 ? {
                     ...item,
                     status: "expirada",
-                    historico: [...(item.historico || []), { ...item, historico: undefined, status: "expirada", em: agora }],
+                    historico: [
+                        ...(item.historico || []),
+                        {
+                            ...item,
+                            historico: undefined,
+                            status: "expirada",
+                            em: agora
+                        }
+                    ],
                     encerradaEm: agora
                 }
                 : item
@@ -1899,7 +1915,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // =====================================================
 // NOVO VISUAL — CATÁLOGO AMPLO E FORMULÁRIO EM JANELA
-// Cole este bloco somente uma vez, no final do app.js.
 // =====================================================
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1942,8 +1957,7 @@ document.addEventListener("DOMContentLoaded", function () {
     novaEntrada.addEventListener("click", function () {
         trocarTela("entradas");
 
-        // Mantém o estoque de origem selecionado:
-        // Estoque principal ou SHOW ROOM.
+        // Mantém o estoque de origem selecionado.
         document.getElementById("entradaSetor").value =
             setorAtual;
 
@@ -1954,8 +1968,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ".cabecalho-acoes"
     ).append(novaEntrada);
 
-    // Ícones do menu, sem alterar os identificadores usados
-    // pela navegação existente.
+    // Ícones do menu.
     const icones = {
         estoque: "▱",
         showroom: "▣",
@@ -2037,7 +2050,6 @@ document.addEventListener("DOMContentLoaded", function () {
     mudarVisualizacao(false);
 
     // Formulário existente dentro de uma janela nativa.
-    // Os campos e seus eventos são preservados.
     const dialogo = document.createElement("dialog");
     dialogo.id = "dialogoMaquina";
     dialogo.className = "dialogo-maquina";
@@ -2092,8 +2104,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Aproveita a seleção original, incluindo a edição
-    // de reservas aberta pelo relatório.
+    // Aproveita a seleção original e a edição de reservas.
     const selecionarOriginal = selecionarModelo;
 
     selecionarModelo = function (modelo) {
@@ -2140,7 +2151,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (disponiveis > 0) {
                     seloSaldo.textContent = "✓ Disponível";
                 } else {
-                   seloSaldo.textContent = "✕ Indisponível";
+                    seloSaldo.textContent = "✕ Indisponível";
                     seloSaldo.classList.add("zerado");
                 }
 
@@ -2163,7 +2174,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // =====================================================
 // FORMULÁRIO COMERCIAL — PREENCHIMENTO E IMPRESSÃO
-// Cole somente uma vez no final do app.js.
 // =====================================================
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -2535,8 +2545,6 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     botaoMenu.addEventListener("click", function () {
-        // Usa a navegação existente para fechar a janela
-        // de registro de máquinas, caso esteja aberta.
         trocarTela("estoque");
 
         principal.querySelectorAll(".tela").forEach(
@@ -2686,7 +2694,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!desenhos[tipo]) return;
 
-            // Remove os símbolos antigos.
             botao.querySelectorAll(
                 ".icone-menu, .icone-wms, .seta-menu-wms"
             ).forEach(function (elemento) {
@@ -2722,192 +2729,618 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     );
 });
+
 // =====================================================
 // RELATÓRIOS UNIFICADOS — ENTRADAS, RESERVAS E VENDAS
 // =====================================================
+
 function montarHistoricoMaquinas(base) {
     const linhas = [];
+
     base.entradas.forEach(e => linhas.push({
-        ...e, tipo: 'Entrada', statusTexto: 'Recebido', dataEvento: e.data
+        ...e,
+        tipo: "Entrada",
+        statusTexto: "Recebido",
+        dataEvento: e.data
     }));
+
     base.reservas.forEach(r => {
         const historico = r.historico || [];
-        // Uma linha para cada início de reserva; salvar uma edição
-        // da mesma reserva não cria outra movimentação.
-        const inicios = historico.filter((h, i) => h.status === 'ativa' &&
-            (i === 0 || historico[i - 1].status !== 'ativa'));
-        if (!inicios.length && ['ativa', 'expirada', 'cancelada', 'concluida'].includes(r.status)) {
+
+        const inicios = historico.filter((h, i) =>
+            h.status === "ativa" &&
+            (i === 0 || historico[i - 1].status !== "ativa")
+        );
+
+        if (
+            !inicios.length &&
+            ["ativa", "expirada", "cancelada", "concluida"]
+                .includes(r.status)
+        ) {
             inicios.push(r);
         }
+
         inicios.forEach((h, i) => {
             const atual = i === inicios.length - 1;
-            const estado = atual ? r.status : 'encerrada';
-            const textos = { ativa: 'Reservado', expirada: 'Expirada', cancelada: 'Cancelada', vendida: 'Convertida em venda', concluida: 'Convertida em venda', encerrada: 'Encerrada', disponivel: 'Liberada' };
-            linhas.push({ ...r, ...h, tipo: 'Reserva', quantidade: 1,
+            const estado = atual ? r.status : "encerrada";
+
+            const textos = {
+                ativa: "Reservado",
+                expirada: "Expirada",
+                cancelada: "Cancelada",
+                vendida: "Convertida em venda",
+                concluida: "Convertida em venda",
+                encerrada: "Encerrada",
+                disponivel: "Liberada"
+            };
+
+            linhas.push({
+                ...r,
+                ...h,
+                tipo: "Reserva",
+                quantidade: 1,
                 dataEvento: h.dataReserva || h.em || r.criadaEm,
                 statusTexto: textos[estado] || estado,
-                status: estado, registroId: r.id,
-                // A nota da venda permanece na linha da venda.
-                nf: h.nf || '', dataEmissao: h.dataEmissao || '' });
+                status: estado,
+                registroId: r.id,
+                nf: h.nf || "",
+                dataEmissao: h.dataEmissao || ""
+            });
         });
     });
-    base.saidas.forEach(s => linhas.push({ ...s, tipo: 'Venda',
-        statusTexto: 'Vendido', dataEvento: s.data }));
-    return linhas.sort((a,b) => String(b.dataEvento || '').localeCompare(String(a.dataEvento || '')));
+
+    base.saidas.forEach(s => linhas.push({
+        ...s,
+        tipo: "Venda",
+        statusTexto: "Vendido",
+        dataEvento: s.data
+    }));
+
+    return linhas.sort((a, b) =>
+        String(b.dataEvento || "")
+            .localeCompare(String(a.dataEvento || ""))
+    );
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('relatoriosUnificados')) return;
+document.addEventListener("DOMContentLoaded", () => {
+    if (document.getElementById("relatoriosUnificados")) return;
+
     function campoExtra(form, id, titulo, obrigatorio = false) {
-        const div = document.createElement('div');
-        div.className = 'campo';
-        const label = document.createElement('label');
+        const div = document.createElement("div");
+        div.className = "campo";
+
+        const label = document.createElement("label");
         label.htmlFor = id;
-        label.textContent = titulo + (obrigatorio ? ' *' : '');
-        const input = document.createElement('input');
-        input.id = id; input.type = 'text'; input.maxLength = 100;
+        label.textContent = titulo + (obrigatorio ? " *" : "");
+
+        const input = document.createElement("input");
+        input.id = id;
+        input.type = "text";
+        input.maxLength = 100;
         input.required = obrigatorio;
-        div.append(label,input);
+
+        div.append(label, input);
         document.getElementById(form).prepend(div);
     }
-    campoExtra('formEntrada','entradaSerie','S/N (opcional na entrada)');
-    campoExtra('formEntrada','entradaCodigo','Código');
-    campoExtra('formEntrada','entradaMatricula','Matrícula',true);
-    campoExtra('camposReserva','reservaMatricula','Matrícula',true);
-    // Uma série identifica uma unidade; entradas em lote podem não ter série.
-    const entrada = document.getElementById('formEntrada');
-    entrada.addEventListener('submit', evento => {
-        if (document.getElementById('entradaSerie').value.trim() &&
-            Number(document.getElementById('entradaQuantidade').value) !== 1) {
-            evento.preventDefault(); evento.stopImmediatePropagation();
-            alert('Ao informar S/N, registre uma máquina por entrada. Para um lote, deixe S/N vazio.');
+
+    campoExtra(
+        "formEntrada",
+        "entradaSerie",
+        "S/N (opcional na entrada)"
+    );
+
+    campoExtra("formEntrada", "entradaCodigo", "Código");
+    campoExtra("formEntrada", "entradaMatricula", "Matrícula", true);
+    campoExtra("camposReserva", "reservaMatricula", "Matrícula", true);
+
+    const entrada = document.getElementById("formEntrada");
+
+    entrada.addEventListener("submit", evento => {
+        if (
+            document.getElementById("entradaSerie").value.trim() &&
+            Number(
+                document.getElementById("entradaQuantidade").value
+            ) !== 1
+        ) {
+            evento.preventDefault();
+            evento.stopImmediatePropagation();
+
+            alert(
+                "Ao informar S/N, registre uma máquina por entrada. " +
+                "Para um lote, deixe S/N vazio."
+            );
         }
     }, true);
 
-    const tela = document.getElementById('telaReservas');
-    // Conserva os elementos antigos, pois ainda são usados pela aplicação.
-    const antigo = document.createElement('div');
+    const tela = document.getElementById("telaReservas");
+    const antigo = document.createElement("div");
+
     antigo.hidden = true;
-    while(tela.firstChild) antigo.append(tela.firstChild);
+
+    while (tela.firstChild) {
+        antigo.append(tela.firstChild);
+    }
+
     tela.append(antigo);
-    const painel = document.createElement('section');
-    painel.id = 'relatoriosUnificados';
+
+    const painel = document.createElement("section");
+    painel.id = "relatoriosUnificados";
+
     painel.innerHTML = `
         <h2>Histórico de entradas, reservas e vendas</h2>
+
         <div class="ru-abas" role="group" aria-label="Tipo de relatório">
-          <button type="button" class="btn" data-ru="Todos">Todos</button>
-          <button type="button" class="btn" data-ru="Entrada">Entradas</button>
-          <button type="button" class="btn" data-ru="Reserva">Reservas</button>
-          <button type="button" class="btn" data-ru="Venda">Vendas</button>
-          <button type="button" class="btn" data-ru="Expirada">Expiradas</button>
+            <button type="button" class="btn" data-ru="Todos">Todos</button>
+            <button type="button" class="btn" data-ru="Entrada">Entradas</button>
+            <button type="button" class="btn" data-ru="Reserva">Reservas</button>
+            <button type="button" class="btn" data-ru="Venda">Vendas</button>
+            <button type="button" class="btn" data-ru="Expirada">Expiradas</button>
         </div>
+
         <form id="ruFiltros" class="card catalogo-filtros">
-          <div class="campo campo-busca"><label for="ruBusca">Buscar</label><input id="ruBusca" type="search" placeholder="Máquina, cliente, matrícula, código ou S/N"></div>
-          <div class="campo"><label for="ruSetor">Estoque</label><select id="ruSetor"><option value="">Todos</option><option value="estoque">Principal</option><option value="showroom">SHOW ROOM</option></select></div>
-          <div class="campo"><label for="ruInicio">De</label><input id="ruInicio" type="date"></div>
-          <div class="campo"><label for="ruFim">Até</label><input id="ruFim" type="date"></div>
-          <button class="btn btn-primario" type="submit">Consultar</button>
-          <button class="btn" type="button" id="ruLimpar">Limpar</button>
+            <div class="campo campo-busca">
+                <label for="ruBusca">Buscar</label>
+                <input
+                    id="ruBusca"
+                    type="search"
+                    placeholder="Máquina, cliente, matrícula, código ou S/N"
+                >
+            </div>
+
+            <div class="campo">
+                <label for="ruSetor">Estoque</label>
+                <select id="ruSetor">
+                    <option value="">Todos</option>
+                    <option value="estoque">Principal</option>
+                    <option value="showroom">SHOW ROOM</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="ruInicio">De</label>
+                <input id="ruInicio" type="date">
+            </div>
+
+            <div class="campo">
+                <label for="ruFim">Até</label>
+                <input id="ruFim" type="date">
+            </div>
+
+            <button class="btn btn-primario" type="submit">
+                Consultar
+            </button>
+
+            <button class="btn" type="button" id="ruLimpar">
+                Limpar
+            </button>
         </form>
-        <div class="ru-barra"><span id="ruContagem" role="status"></span><button class="btn" type="button" id="ruExportar">Exportar CSV (Excel)</button><button class="btn" type="button" id="ruImprimir">Imprimir</button></div>
+
+        <div class="ru-barra">
+            <span id="ruContagem" role="status"></span>
+
+            <button class="btn" type="button" id="ruExportar">
+                Exportar CSV (Excel)
+            </button>
+
+            <button class="btn" type="button" id="ruImprimir">
+                Imprimir
+            </button>
+        </div>
+
         <div class="tabela-container" id="ruTabela"></div>
-        <p class="texto-auxiliar">Reservas expiradas liberam a disponibilidade sem gerar outra entrada. Nesta versão local, os prazos são conferidos ao abrir e durante o uso do aplicativo.</p>
-        <p class="texto-auxiliar">Registros antigos sem matrícula, código ou S/N mantêm esses campos em branco. O período considera a data de cada entrada, reserva ou venda.</p>`;
+
+        <p class="texto-auxiliar">
+            Reservas expiradas liberam a disponibilidade sem gerar
+            outra entrada. Nesta versão local, os prazos são conferidos
+            ao abrir e durante o uso do aplicativo.
+        </p>
+
+        <p class="texto-auxiliar">
+            Registros antigos sem matrícula, código ou S/N mantêm esses
+            campos em branco. O período considera a data de cada entrada,
+            reserva ou venda.
+        </p>
+    `;
+
     tela.append(painel);
-    const estilo = document.createElement('style');
-    estilo.textContent = `.ru-abas,.ru-barra{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.ru-barra span{margin-right:auto}.ru-abas [aria-pressed="true"]{background:#087dff}#ruFiltros .campo{flex:1 1 130px}#ruFiltros .campo-busca{flex:3 1 250px}#ruTabela{max-height:65vh}#ruTabela th{position:sticky;top:0;z-index:1}#ruTabela tbody tr:nth-child(even){background:#11283e}.ru-etiqueta{display:inline-block;padding:4px 8px;border-radius:6px;background:#174b7e}.ru-reserva{background:#725319}.ru-venda{background:#603c8d}.ru-expirada{background:#823c43}`;
+
+    const estilo = document.createElement("style");
+
+    estilo.textContent = `
+        .ru-abas,
+        .ru-barra {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 18px 0;
+        }
+
+        .ru-barra span {
+            margin-right: auto;
+        }
+
+        .ru-abas [aria-pressed="true"] {
+            background: #087dff;
+        }
+
+        #ruFiltros .campo {
+            flex: 1 1 130px;
+        }
+
+        #ruFiltros .campo-busca {
+            flex: 3 1 250px;
+        }
+
+        #ruTabela {
+            max-height: 65vh;
+        }
+
+        #ruTabela th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        #ruTabela tbody tr:nth-child(even) {
+            background: #11283e;
+        }
+
+        .ru-etiqueta {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #174b7e;
+        }
+
+        .ru-reserva {
+            background: #725319;
+        }
+
+        .ru-venda {
+            background: #603c8d;
+        }
+
+        .ru-expirada {
+            background: #823c43;
+        }
+    `;
+
     document.head.append(estilo);
-    let tipo = 'Todos';
+
+    let tipo = "Todos";
     let resultado = [];
-    let aplicados = {busca:'',setor:'',inicio:'',fim:''};
-    const cabecalhos = ['Tipo','Data','Estoque','Máquina','Qtd.','Matrícula','Código','S/N','Cliente','Vendedor','Limite reserva','Nº NF','Emissão','Status','Ações'];
+
+    let aplicados = {
+        busca: "",
+        setor: "",
+        inicio: "",
+        fim: ""
+    };
+
+    const cabecalhos = [
+        "Tipo",
+        "Data",
+        "Estoque",
+        "Máquina",
+        "Qtd.",
+        "Matrícula",
+        "Código",
+        "S/N",
+        "Cliente",
+        "Vendedor",
+        "Limite reserva",
+        "Nº NF",
+        "Emissão",
+        "Status",
+        "Ações"
+    ];
+
     function valores(r) {
-        return [r.tipo, formatarData(r.dataEvento), nomeSetor(setorDe(r)), r.modelo,
-            r.quantidade, r.matricula, r.codigo, r.serie, r.cliente, r.vendedor,
-            r.tipo === 'Reserva' ? formatarData(r.vencimento) : '', r.nf,
-            r.dataEmissao ? formatarData(r.dataEmissao) : '', r.statusTexto];
+        return [
+            r.tipo,
+            formatarData(r.dataEvento),
+            nomeSetor(setorDe(r)),
+            r.modelo,
+            r.quantidade,
+            r.matricula,
+            r.codigo,
+            r.serie,
+            r.cliente,
+            r.vendedor,
+            r.tipo === "Reserva" ? formatarData(r.vencimento) : "",
+            r.nf,
+            r.dataEmissao ? formatarData(r.dataEmissao) : "",
+            r.statusTexto
+        ];
     }
+
     function construirTabela(registros, acoes) {
-        const tabela = document.createElement('table');
-        const thead = tabela.createTHead(); const h = thead.insertRow();
+        const tabela = document.createElement("table");
+        const thead = tabela.createTHead();
+        const h = thead.insertRow();
+
         cabecalhos.slice(0, acoes ? 15 : 14).forEach(t => {
-            const th = document.createElement('th'); th.scope='col'; th.textContent=t; h.append(th);
+            const th = document.createElement("th");
+            th.scope = "col";
+            th.textContent = t;
+            h.append(th);
         });
+
         const corpo = tabela.createTBody();
+
         registros.forEach(r => {
             const tr = corpo.insertRow();
-            valores(r).forEach((v,i) => {
+
+            valores(r).forEach((v, i) => {
                 const td = tr.insertCell();
+
                 if (i === 0 || i === 13) {
-                    const badge = document.createElement('span');
-                    badge.className = 'ru-etiqueta ru-' + (r.statusTexto === 'Expirada' ? 'expirada' : r.tipo.toLowerCase());
-                    badge.textContent = String(v ?? '—'); td.append(badge);
-                } else td.textContent = v === '' || v == null ? '—' : String(v);
+                    const badge = document.createElement("span");
+
+                    badge.className =
+                        "ru-etiqueta ru-" +
+                        (
+                            r.statusTexto === "Expirada"
+                                ? "expirada"
+                                : r.tipo.toLowerCase()
+                        );
+
+                    badge.textContent = String(v ?? "—");
+                    td.append(badge);
+                } else {
+                    td.textContent =
+                        v === "" || v == null ? "—" : String(v);
+                }
             });
+
             if (acoes) {
                 const td = tr.insertCell();
-                if(r.tipo === 'Reserva' && ['ativa','expirada','cancelada','disponivel'].includes(r.status)) {
-                    const b = document.createElement('button'); b.type='button'; b.className='btn';
-                    b.textContent='Editar / vender'; b.onclick=()=>editarRegistro(r.registroId); td.append(b);
-                } else td.textContent='—';
+
+                if (
+                    r.tipo === "Reserva" &&
+                    [
+                        "ativa",
+                        "expirada",
+                        "cancelada",
+                        "disponivel"
+                    ].includes(r.status)
+                ) {
+                    const b = document.createElement("button");
+
+                    b.type = "button";
+                    b.className = "btn";
+                    b.textContent = "Editar / vender";
+                    b.onclick = () => editarRegistro(r.registroId);
+
+                    td.append(b);
+                } else {
+                    td.textContent = "—";
+                }
             }
         });
+
         if (!registros.length) {
-            const td=corpo.insertRow().insertCell(); td.colSpan=acoes?15:14;
-            td.textContent='Nenhum registro encontrado para os filtros selecionados.';
+            const td = corpo.insertRow().insertCell();
+
+            td.colSpan = acoes ? 15 : 14;
+            td.textContent =
+                "Nenhum registro encontrado para os filtros selecionados.";
         }
+
         return tabela;
     }
+
     function desenhar() {
-        const f=aplicados;
-        resultado=montarHistoricoMaquinas(dados).filter(r=> {
-            const dia=dataLocal(r.dataEvento);
-            return (tipo==='Todos' || (tipo==='Expirada' ? r.statusTexto==='Expirada' : r.tipo===tipo)) &&
-                (!f.setor || setorDe(r)===f.setor) && (!f.inicio || dia>=f.inicio) && (!f.fim || dia<=f.fim) &&
-                (!f.busca || normalizar(valores(r).join(' ')).includes(normalizar(f.busca)));
+        const f = aplicados;
+
+        resultado = montarHistoricoMaquinas(dados).filter(r => {
+            const dia = dataLocal(r.dataEvento);
+
+            return (
+                (
+                    tipo === "Todos" ||
+                    (
+                        tipo === "Expirada"
+                            ? r.statusTexto === "Expirada"
+                            : r.tipo === tipo
+                    )
+                ) &&
+                (!f.setor || setorDe(r) === f.setor) &&
+                (!f.inicio || dia >= f.inicio) &&
+                (!f.fim || dia <= f.fim) &&
+                (
+                    !f.busca ||
+                    normalizar(valores(r).join(" "))
+                        .includes(normalizar(f.busca))
+                )
+            );
         });
-        document.getElementById('ruTabela').replaceChildren(construirTabela(resultado,true));
-        document.getElementById('ruContagem').textContent=`${resultado.length} registro(s) encontrado(s)`;
-        painel.querySelectorAll('[data-ru]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ru===tipo)));
+
+        document.getElementById("ruTabela").replaceChildren(
+            construirTabela(resultado, true)
+        );
+
+        document.getElementById("ruContagem").textContent =
+            `${resultado.length} registro(s) encontrado(s)`;
+
+        painel.querySelectorAll("[data-ru]").forEach(b => {
+            b.setAttribute(
+                "aria-pressed",
+                String(b.dataset.ru === tipo)
+            );
+        });
     }
+
     function consultar(evento) {
         evento?.preventDefault();
-        const inicio=document.getElementById('ruInicio').value;
-        const fim=document.getElementById('ruFim').value;
-        if(inicio && fim && inicio>fim) { alert('A data inicial deve ser anterior ou igual à final.'); return false; }
-        aplicados={busca:document.getElementById('ruBusca').value.trim(),setor:document.getElementById('ruSetor').value,inicio,fim};
-        verificarVencimentos(); desenhar(); return true;
+
+        const inicio = document.getElementById("ruInicio").value;
+        const fim = document.getElementById("ruFim").value;
+
+        if (inicio && fim && inicio > fim) {
+            alert("A data inicial deve ser anterior ou igual à final.");
+            return false;
+        }
+
+        aplicados = {
+            busca: document.getElementById("ruBusca").value.trim(),
+            setor: document.getElementById("ruSetor").value,
+            inicio,
+            fim
+        };
+
+        verificarVencimentos();
+        desenhar();
+
+        return true;
     }
-    painel.querySelectorAll('[data-ru]').forEach(b=>b.onclick=()=>{tipo=b.dataset.ru;consultar();});
-    document.getElementById('ruFiltros').onsubmit=consultar;
-    document.getElementById('ruLimpar').onclick=()=>{document.getElementById('ruFiltros').reset();tipo='Todos';consultar();};
-    const renderizarAnterior=renderizarTudo;
-    renderizarTudo=function(){renderizarAnterior();desenhar();};
-    document.getElementById('ruExportar').onclick=()=>{
-        if (!consultar()) return;
-        const proteger=v=>'"'+String(v ?? '').replace(/^[\s]*([=+@-])/u,"'$1").replace(/"/g,'""')+'"';
-        const csv='\uFEFF'+[cabecalhos.slice(0,14),...resultado.map(valores)].map(l=>l.map(proteger).join(';')).join('\r\n');
-        const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-        const a=document.createElement('a');a.href=url;a.download='relatorio-maquinas.csv';a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),1000);
-    };
-    document.getElementById('ruImprimir').onclick=()=>{
-        if (!consultar()) return;
-        const janela=window.open('','_blank');
-        if(!janela){alert('Permita abrir a janela de impressão neste site.');return;}
-        const doc=janela.document;doc.title='Relatório de máquinas';
-        const css=doc.createElement('style');css.textContent='@page{size:A4 landscape;margin:10mm}body{font-family:Arial;color:#111}h1{font-size:20px}p{font-size:11px}table{width:100%;border-collapse:collapse;font-size:9px}td,th{padding:5px;border:1px solid #aaa;text-align:left;overflow-wrap:anywhere}th{background:#e0ebf4}tr{break-inside:avoid}';doc.head.append(css);
-        const titulo=doc.createElement('h1');titulo.textContent='SMI Máquinas — Relatórios';
-        const resumo=doc.createElement('p');resumo.textContent=`${tipo} • ${resultado.length} registros • ${nomeSetor(aplicados.setor)}${!aplicados.setor?' / SHOW ROOM':''} • Período: ${aplicados.inicio||'Todos'} a ${aplicados.fim||'Todos'} • Busca: ${aplicados.busca||'Todas'}`;
-        doc.body.append(titulo,resumo,doc.importNode(construirTabela(resultado,false),true));
-       janela.focus();
 
-setTimeout(function () {
-    window.smiTraduzirDocumento?.(doc);
-    janela.print();
-}, 250);
+    painel.querySelectorAll("[data-ru]").forEach(b => {
+        b.onclick = () => {
+            tipo = b.dataset.ru;
+            consultar();
+        };
+    });
 
+    document.getElementById("ruFiltros").onsubmit = consultar;
+
+    document.getElementById("ruLimpar").onclick = () => {
+        document.getElementById("ruFiltros").reset();
+        tipo = "Todos";
+        consultar();
     };
+
+    const renderizarAnterior = renderizarTudo;
+
+    renderizarTudo = function () {
+        renderizarAnterior();
+        desenhar();
+    };
+
+    document.getElementById("ruExportar").onclick = () => {
+        if (!consultar()) return;
+
+        const proteger = v =>
+            '"' +
+            String(v ?? "")
+                .replace(/^[\s]*([=+@-])/u, "'$1")
+                .replace(/"/g, '""') +
+            '"';
+
+        const csv =
+            "\uFEFF" +
+            [
+                cabecalhos.slice(0, 14),
+                ...resultado.map(valores)
+            ]
+                .map(l => l.map(proteger).join(";"))
+                .join("\r\n");
+
+        const url = URL.createObjectURL(
+            new Blob([csv], {
+                type: "text/csv;charset=utf-8"
+            })
+        );
+
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = "relatorio-maquinas.csv";
+        a.click();
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    document.getElementById("ruImprimir").onclick = () => {
+        if (!consultar()) return;
+
+        const janela = window.open("", "_blank");
+
+        if (!janela) {
+            alert("Permita abrir a janela de impressão neste site.");
+            return;
+        }
+
+        const doc = janela.document;
+        doc.title = "Relatório de máquinas";
+
+        const css = doc.createElement("style");
+
+        css.textContent = `
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+
+            body {
+                font-family: Arial;
+                color: #111;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            p {
+                font-size: 11px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 9px;
+            }
+
+            td,
+            th {
+                padding: 5px;
+                border: 1px solid #aaa;
+                text-align: left;
+                overflow-wrap: anywhere;
+            }
+
+            th {
+                background: #e0ebf4;
+            }
+
+            tr {
+                break-inside: avoid;
+            }
+        `;
+
+        doc.head.append(css);
+
+        const titulo = doc.createElement("h1");
+        titulo.textContent = "SMI Máquinas — Relatórios";
+
+        const resumo = doc.createElement("p");
+
+        resumo.textContent =
+            `${tipo} • ${resultado.length} registros • ` +
+            `${nomeSetor(aplicados.setor)}` +
+            `${!aplicados.setor ? " / SHOW ROOM" : ""} • ` +
+            `Período: ${aplicados.inicio || "Todos"} a ` +
+            `${aplicados.fim || "Todos"} • ` +
+            `Busca: ${aplicados.busca || "Todas"}`;
+
+        doc.body.append(
+            titulo,
+            resumo,
+            doc.importNode(
+                construirTabela(resultado, false),
+                true
+            )
+        );
+
+        janela.focus();
+
+        setTimeout(function () {
+            window.smiTraduzirDocumento?.(doc);
+            janela.print();
+        }, 250);
+    };
+
     desenhar();
 });
 
@@ -2923,16 +3356,12 @@ setTimeout(function () {
 (function () {
     "use strict";
 
-    // Se a versão completa já possui a importação,
-    // não cria o recurso novamente.
     if (typeof PLANILHA_RECEBIDA !== "undefined") {
         return;
     }
 
     const ID_IMPORTACAO = "estoque-maquinas-2026-11-05-v1";
 
-    // Linha do Excel, descrição original e quantidade.
-    // null significa que a quantidade estava vazia.
     const origemPlanilha = [
         [2, "SL45", 2],
         [3, "SL55", 15],
@@ -3021,7 +3450,6 @@ setTimeout(function () {
     const primeirasDescricoes = new Map();
     const ocorrencias = new Map();
 
-    // Prepara os nomes e separa os estoques.
     const linhas = origemPlanilha.map(function (registro) {
         const [linha, descricao, quantidade] = registro;
 
@@ -3084,7 +3512,6 @@ setTimeout(function () {
         });
     }
 
-    // Recupera os novos modelos ao carregar os dados locais.
     const carregarAnterior = carregarDados;
 
     carregarDados = function () {
@@ -3095,7 +3522,6 @@ setTimeout(function () {
         return base;
     };
 
-    // Retira a área de imagem dos acessórios.
     const renderizarAnterior = renderizarCatalogo;
 
     renderizarCatalogo = function () {
@@ -3725,7 +4151,6 @@ setTimeout(function () {
                         ]
                     };
 
-                    // Grava toda a importação em uma única operação.
                     gravarDados(proximosDados);
 
                     recuperarCatalogo(proximosDados);
@@ -3802,7 +4227,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         botao.textContent = "Substituir testes e carregar estoque";
 
-        // Corrige as orientações da importação anterior.
         bloco.querySelectorAll("p").forEach(function (p) {
             if (
                 /quantidades serão somadas/i.test(p.textContent)
@@ -3837,7 +4261,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // Mostra os saldos finais sem somar os testes.
         const tabela =
             document.getElementById("tabelaImportacaoExcel") ||
             document.getElementById("tabelaPreviaExcel");
@@ -3919,8 +4342,6 @@ document.addEventListener("DOMContentLoaded", function () {
             );
         }
 
-        // Guarda uma cópia antes de substituir.
-        // Não altera nenhum dado do WMS de peças.
         const atuais = localStorage.getItem(CHAVE_DADOS);
 
         if (atuais) {
@@ -3942,7 +4363,6 @@ document.addEventListener("DOMContentLoaded", function () {
         concluido = true;
     };
 
-    // Ativa a substituição apenas durante este clique.
     botao.addEventListener(
         "click",
         function () {
@@ -3987,15 +4407,15 @@ document.addEventListener("DOMContentLoaded", function () {
     ajustarPrevia();
 });
 
-// Zera os dados uma única vez para começar as entradas manuais.
+// Rotina antiga de zerar o estoque: desativada.
 document.addEventListener("DOMContentLoaded", function () {
     executar(function () {
+        return; // Desativa a antiga rotina de zerar o estoque.
+
         const identificador = "inicio-manual-2026-11-06";
 
-        // Impede que as próximas atualizações apaguem novas entradas.
         if (dados.reinicioManual === identificador) return;
 
-        // Guarda uma cópia dos dados anteriores.
         localStorage.setItem(
             CHAVE_DADOS + "_backup_antes_inicio_manual",
             JSON.stringify(dados)
@@ -4023,7 +4443,6 @@ document.addEventListener("DOMContentLoaded", function () {
         );
     });
 
-    // Retira a importação da tela para seguir com entradas manuais.
     [
         "blocoImportacaoExcel",
         "importacaoRecebida"
@@ -4053,7 +4472,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // =====================================================
 // RESERVA COM VÁRIAS MÁQUINAS E ACESSÓRIOS
-// Cole no final do app.js
 // =====================================================
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -4369,7 +4787,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     }
 
-    function mostrarItens() {
+        function mostrarItens() {
         lista.replaceChildren();
 
         if (!extras.length) return;
@@ -4636,7 +5054,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // -------------------------------------------------
 
     form.addEventListener("submit", function (evento) {
-        // Mantém a edição individual pelo relatório.
         if (registroEmEdicao) return;
 
         evento.preventDefault();
@@ -4696,7 +5113,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const usados = new Map();
             const series = new Set();
 
-            // Confere todos os itens antes de gravar qualquer um.
             itens.forEach(item => {
                 if (
                     !item.modelo ||
@@ -4878,8 +5294,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!folha || !cliente || !seletor) return;
     if (el("dadosCompletosFormulario")) return;
 
-    // CLIENTE E VENDEDOR NO CABEÇALHO
-
     cliente.placeholder = "CLIENTE";
     cliente.setAttribute("aria-label", "Cliente");
 
@@ -4903,8 +5317,6 @@ document.addEventListener("DOMContentLoaded", function () {
     vendedor.autocomplete = "off";
 
     cliente.after(rotuloVendedor, vendedor);
-
-    // DADOS COMPLEMENTARES DO REGISTRO
 
     const detalhes = document.createElement("section");
     detalhes.id = "dadosCompletosFormulario";
@@ -5225,13 +5637,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Atualiza ao escolher um registro salvo.
-
     seletor.addEventListener("change", function () {
         queueMicrotask(atualizarFormularioCompleto);
     });
-
-    // Atualiza depois de salvar ou editar um registro.
 
     const gravarAntes = gravarDados;
 
@@ -5243,8 +5651,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return resultado;
     };
 
-    // Atualiza ao abrir o menu FORMULÁRIO.
-
     const menuFormulario = document.querySelector(
         '[aria-controls="telaFormularioComercial"]'
     );
@@ -5255,15 +5661,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Limpa os dados complementares ao limpar o formulário.
-
     const limpar = el("limparFormularioComercial");
 
     if (limpar) {
         limpar.addEventListener("click", function () {
             queueMicrotask(function () {
-                // O código original limpa o cliente quando
-                // o usuário confirma a limpeza.
                 if (cliente.value !== "") return;
 
                 vendedor.value = "";
@@ -5295,8 +5697,6 @@ document.addEventListener("DOMContentLoaded", function () {
         rotulo.style.display = "none";
     }
 
-    // Oculta também o espaço do campo, caso exista
-    // um contêiner exclusivo para ele.
     const recipiente = campo.closest(
         ".campo, .form-group, .campo-formulario"
     );
@@ -6208,7 +6608,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return false;
             }
 
-            // Preserva as células que contêm dados cadastrados.
             const celula = elemento.closest("td");
 
             if (
@@ -6232,7 +6631,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return false;
             }
 
-            // Preserva os nomes dos modelos nas listas.
             if (
                 elemento.matches("option") &&
                 /modelo|conjunto/i.test(
@@ -6371,7 +6769,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         window.smiTraduzirDocumento = traduzirDocumento;
 
-        // Mensagens e confirmações.
         const alertaOriginal = window.alert.bind(window);
         const confirmarOriginal = window.confirm.bind(window);
 
@@ -6383,7 +6780,6 @@ document.addEventListener("DOMContentLoaded", function () {
             return confirmarOriginal(traduzir(texto));
         };
 
-        // Sincroniza as preferências entre abas.
         window.addEventListener("storage", function (evento) {
             if (evento.key !== CHAVE_PREFERENCIAS) return;
 
@@ -6417,3 +6813,859 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 })();
 
+// =====================================================
+// BACKUP DOS DADOS LOCAIS
+// =====================================================
+
+(() => {
+    function criarBotaoBackup() {
+        if (document.getElementById("btnBackupEstoque")) return;
+
+        const local = document.querySelector(".cabecalho-acoes");
+        if (!local) return;
+
+        const botao = document.createElement("button");
+
+        botao.id = "btnBackupEstoque";
+        botao.type = "button";
+        botao.className = "btn btn-secundario";
+        botao.textContent = "Baixar backup";
+
+        botao.addEventListener("click", () => {
+            try {
+                const texto = localStorage.getItem(
+                    "smi_maquinas_teste_v1"
+                );
+
+                if (!texto) {
+                    alert(
+                        "Não há estoque salvo neste endereço. " +
+                        "Abra o Live Server onde estão seus dados."
+                    );
+                    return;
+                }
+
+                const dadosBackup = JSON.parse(texto);
+
+                if (
+                    !Array.isArray(dadosBackup.entradas) ||
+                    !Array.isArray(dadosBackup.saidas) ||
+                    !Array.isArray(dadosBackup.reservas)
+                ) {
+                    throw new Error("Formato de dados inválido.");
+                }
+
+                const arquivo = new Blob(
+                    [JSON.stringify(dadosBackup, null, 2)],
+                    { type: "application/json;charset=utf-8" }
+                );
+
+                const url = URL.createObjectURL(arquivo);
+                const link = document.createElement("a");
+
+                link.href = url;
+                link.download =
+                    "backup-smi-maquinas-" + Date.now() + ".json";
+
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch {
+                alert(
+                    "Não foi possível gerar o backup. " +
+                    "Não limpe os dados do navegador."
+                );
+            }
+        });
+
+        local.appendChild(botao);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            criarBotaoBackup,
+            { once: true }
+        );
+    } else {
+        criarBotaoBackup();
+    }
+})();
+
+// =====================================================
+// TESTE DE LEITURA DO SUPABASE
+// Esta etapa somente consulta os dados.
+// =====================================================
+
+(() => {
+    async function conferirEstoqueNaNuvem() {
+        const cliente = window.smiSupabase;
+        if (!cliente) return;
+
+        const { data: sessao, error: erroSessao } =
+            await cliente.auth.getSession();
+
+        if (erroSessao || !sessao.session) return;
+
+        let aviso = document.getElementById("smiTesteNuvem");
+
+        if (!aviso) {
+            aviso = document.createElement("div");
+            aviso.id = "smiTesteNuvem";
+
+            aviso.style.cssText = `
+                position: fixed;
+                bottom: 16px;
+                right: 16px;
+                z-index: 99999;
+                max-width: 420px;
+                padding: 16px;
+                border-radius: 10px;
+                background: #1e293b;
+                color: #fff;
+                font: 14px Arial, sans-serif;
+                box-shadow: 0 4px 20px #0005;
+            `;
+
+            document.body.appendChild(aviso);
+        }
+
+        aviso.textContent = "Conferindo acesso ao estoque na nuvem…";
+
+        try {
+            const { data, error } = await cliente
+                .from("maquinas_estado")
+                .select("id,dados,revisao")
+                .eq("id", "principal")
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (!data) {
+                throw new Error(
+                    "Estoque não encontrado ou usuário sem acesso."
+                );
+            }
+
+            const estoque = data.dados;
+
+            if (
+                !Array.isArray(estoque?.entradas) ||
+                !Array.isArray(estoque?.saidas) ||
+                !Array.isArray(estoque?.reservas)
+            ) {
+                throw new Error(
+                    "O estoque retornou em formato inválido."
+                );
+            }
+
+            aviso.style.background = "#166534";
+            aviso.textContent =
+                "Acesso à nuvem confirmado: " +
+                estoque.entradas.length + " entradas, " +
+                estoque.saidas.length + " saídas e " +
+                estoque.reservas.length + " reservas. " +
+                "Teste de leitura concluído.";
+        } catch (erro) {
+            aviso.style.background = "#991b1b";
+            aviso.textContent = "Falha no acesso: " + erro.message;
+        }
+    }
+
+    function iniciarConferencia() {
+        conferirEstoqueNaNuvem();
+
+        window.smiSupabase?.auth.onAuthStateChange(
+            (evento, sessao) => {
+                if (evento === "SIGNED_IN" && sessao) {
+                    setTimeout(conferirEstoqueNaNuvem, 0);
+                }
+
+                if (evento === "SIGNED_OUT") {
+                    document.getElementById("smiTesteNuvem")?.remove();
+                }
+            }
+        );
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            iniciarConferencia
+        );
+    } else {
+        iniciarConferencia();
+    }
+})();
+
+// =====================================================
+// CONEXÃO DA TELA COM O ESTOQUE NO SUPABASE
+// Cole este bloco uma única vez no final do app.js.
+// Depende do nuvem.js que já testamos.
+// =====================================================
+
+(function () {
+    "use strict";
+
+    function criarControleNuvem(
+        repositorio,
+        armazenamento,
+        aplicar,
+        avisar
+    ) {
+        const copiar = valor =>
+            JSON.parse(JSON.stringify(valor));
+
+        let base = null;
+        let rascunho = null;
+        let revisao = 0;
+
+        let pronto = false;
+        let ocupado = false;
+        let editando = false;
+        let geracao = 0;
+
+        function validar(valor) {
+            if (
+                valor?.versao !== 1 ||
+                !Array.isArray(valor.entradas) ||
+                !Array.isArray(valor.saidas) ||
+                !Array.isArray(valor.reservas)
+            ) {
+                throw new Error(
+                    "Formato de estoque inválido."
+                );
+            }
+        }
+
+        async function comPrazo(promessa) {
+            let temporizador;
+
+            try {
+                return await Promise.race([
+                    promessa,
+
+                    new Promise((_, rejeitar) => {
+                        temporizador = setTimeout(() => {
+                            rejeitar(new Error(
+                                "A conexão demorou demais. " +
+                                "Confira a nuvem antes de repetir."
+                            ));
+                        }, 20000);
+                    })
+                ]);
+            } finally {
+                clearTimeout(temporizador);
+            }
+        }
+
+        return {
+            get pronto() {
+                return pronto;
+            },
+
+            get ocupado() {
+                return ocupado;
+            },
+
+            carregar() {
+                if (!base) {
+                    throw new Error(
+                        "Aguarde o estoque da nuvem."
+                    );
+                }
+
+                return copiar(
+                    editando ? rascunho : base
+                );
+            },
+
+            gravar(valor) {
+                if (!editando) {
+                    throw new Error(
+                        "Salvamento fora de uma operação autorizada."
+                    );
+                }
+
+                validar(valor);
+
+                rascunho = copiar(valor);
+
+                return copiar(rascunho);
+            },
+
+            bloquear() {
+                geracao++;
+
+                pronto = false;
+                ocupado = false;
+                editando = false;
+
+                base = null;
+                rascunho = null;
+            },
+
+            async abrir() {
+                if (ocupado) return;
+
+                const turno = ++geracao;
+
+                pronto = false;
+                ocupado = true;
+
+                avisar("carregando");
+
+                try {
+                    const registro = await comPrazo(
+                        repositorio.lerEstoque()
+                    );
+
+                    if (turno !== geracao) return;
+
+                    validar(registro.dados);
+
+                    if (
+                        !Number.isSafeInteger(registro.revisao) ||
+                        registro.revisao < 1
+                    ) {
+                        throw new Error(
+                            "Revisão do estoque inválida."
+                        );
+                    }
+
+                    base = copiar(registro.dados);
+                    revisao = registro.revisao;
+
+                    aplicar(copiar(base));
+
+                    pronto = true;
+
+                    avisar("pronto");
+                } catch (erro) {
+                    if (turno === geracao) {
+                        avisar("falha", erro.message);
+                    }
+                } finally {
+                    if (turno === geracao) {
+                        ocupado = false;
+                    }
+                }
+            },
+
+            async executar(acao) {
+                if (!pronto || ocupado) return;
+
+                const turno = geracao;
+
+                ocupado = true;
+                editando = true;
+
+                rascunho = copiar(base);
+
+                let enviado = false;
+                let chaveTentativa = "";
+
+                try {
+                    acao();
+
+                    editando = false;
+
+                    if (
+                        JSON.stringify(rascunho) ===
+                        JSON.stringify(base)
+                    ) {
+                        return;
+                    }
+
+                    chaveTentativa =
+                        "smi_maquinas_pendente_" +
+                        Date.now() +
+                        "_" +
+                        Math.random().toString(36).slice(2);
+
+                    armazenamento.setItem(
+                        chaveTentativa,
+                        JSON.stringify(rascunho)
+                    );
+
+                    avisar("salvando");
+
+                    enviado = true;
+
+                    const registro = await comPrazo(
+                        repositorio.salvarEstoque(
+                            copiar(rascunho),
+                            revisao
+                        )
+                    );
+
+                    if (turno !== geracao) return;
+
+                    validar(registro.dados);
+
+                    if (
+                        registro.revisao !== revisao + 1
+                    ) {
+                        throw new Error(
+                            "Revisão não confirmada."
+                        );
+                    }
+
+                    base = copiar(registro.dados);
+                    revisao = registro.revisao;
+
+                    aplicar(copiar(base));
+
+                    try {
+                        armazenamento.removeItem(
+                            chaveTentativa
+                        );
+                    } catch (_) {
+                        // A confirmação da nuvem permanece válida.
+                    }
+
+                    avisar("salvo");
+                } catch (erro) {
+                    if (turno !== geracao) return;
+
+                    editando = false;
+
+                    if (enviado) {
+                        pronto = false;
+
+                        avisar(
+                            "falha",
+                            erro.message +
+                            " Uma cópia da tentativa foi guardada " +
+                            "neste navegador. Reabra e confira o " +
+                            "estoque antes de repetir a operação."
+                        );
+                    } else {
+                        try {
+                            aplicar(copiar(base));
+
+                            avisar(
+                                "erro",
+                                erro.message
+                            );
+                        } catch (erroLocal) {
+                            pronto = false;
+
+                            avisar(
+                                "falha",
+                                erro.message +
+                                " Não foi possível atualizar " +
+                                "a cópia local: " +
+                                erroLocal.message
+                            );
+                        }
+                    }
+                } finally {
+                    if (turno === geracao) {
+                        editando = false;
+                        ocupado = false;
+                    }
+                }
+            }
+        };
+    }
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+            if (window.smiNuvem) return;
+
+            const gravarLocal = gravarDados;
+            const lerLocal = carregarDados;
+            const mostrarMensagem = mensagem;
+
+            let mensagemSucesso = "";
+
+            // -----------------------------------------
+            // AVISO DE CARREGAMENTO E SALVAMENTO
+            // -----------------------------------------
+
+            const estilo = document.createElement("style");
+
+            estilo.textContent = `
+                #smiTesteNuvem {
+                    display: none !important;
+                }
+
+                #smiDialogoNuvem {
+                    max-width: 540px;
+                    width: 90%;
+                    padding: 26px;
+                    border: 1px solid #42647d;
+                    border-radius: 14px;
+                    background: #10283d;
+                    color: white;
+                }
+
+                #smiDialogoNuvem::backdrop {
+                    background: #071426eb;
+                }
+            `;
+
+            document.head.append(estilo);
+
+            const dialogo = document.createElement("dialog");
+
+            dialogo.id = "smiDialogoNuvem";
+
+            const titulo = document.createElement("h2");
+            titulo.textContent = "Estoque na nuvem";
+
+            const texto = document.createElement("p");
+
+            const reabrir = document.createElement("button");
+
+            reabrir.type = "button";
+            reabrir.className = "btn btn-primario";
+            reabrir.textContent = "Reabrir estoque";
+
+            reabrir.onclick = function () {
+                location.reload();
+            };
+
+            dialogo.append(
+                titulo,
+                texto,
+                reabrir
+            );
+
+            document.body.append(dialogo);
+
+            dialogo.addEventListener(
+                "cancel",
+                function (evento) {
+                    evento.preventDefault();
+                }
+            );
+
+            function painel(conteudo, falha = false) {
+                texto.textContent = conteudo;
+                reabrir.hidden = !falha;
+
+                if (!dialogo.open) {
+                    dialogo.showModal();
+                }
+            }
+
+            function atualizarSelo(conteudo) {
+                document.querySelectorAll(
+                    ".selo-local"
+                ).forEach(function (item) {
+                    item.textContent = conteudo;
+                });
+            }
+
+            // -----------------------------------------
+            // APLICA SOMENTE DADOS CONFIRMADOS
+            // -----------------------------------------
+
+            function aplicar(base) {
+                const antiga = localStorage.getItem(
+                    CHAVE_DADOS
+                );
+
+                const chaveBackup =
+                    "smi_maquinas_antes_conexao_nuvem_v1";
+
+                if (
+                    antiga &&
+                    localStorage.getItem(chaveBackup) === null
+                ) {
+                    localStorage.setItem(
+                        chaveBackup,
+                        antiga
+                    );
+                }
+
+                gravarLocal(base);
+
+                // Recupera também os modelos e acessórios.
+                dados = lerLocal();
+
+                [
+                    "entradaModelo",
+                    "saidaModelo",
+                    "relatorioModelo"
+                ].forEach(function (id) {
+                    const seletor =
+                        document.getElementById(id);
+
+                    if (!seletor) return;
+
+                    const existentes = new Set(
+                        Array.from(
+                            seletor.options,
+                            item => item.value
+                        )
+                    );
+
+                    MODELOS.forEach(function (modelo) {
+                        if (existentes.has(modelo)) return;
+
+                        seletor.add(
+                            new Option(modelo, modelo)
+                        );
+
+                        existentes.add(modelo);
+                    });
+                });
+
+                renderizarTudo();
+            }
+
+            function avisar(etapa, detalhe = "") {
+                if (etapa === "carregando") {
+                    mensagemSucesso = "";
+
+                    atualizarSelo(
+                        "Carregando estoque da nuvem…"
+                    );
+
+                    painel(
+                        "Carregando o estoque do Supabase. Aguarde…"
+                    );
+
+                    return;
+                }
+
+                if (etapa === "salvando") {
+                    atualizarSelo(
+                        "Salvando na nuvem…"
+                    );
+
+                    painel(
+                        "Salvando a alteração no Supabase. " +
+                        "Aguarde a confirmação…"
+                    );
+
+                    return;
+                }
+
+                if (etapa === "falha") {
+                    atualizarSelo(
+                        "Conexão interrompida — confira o estoque"
+                    );
+
+                    painel(detalhe, true);
+
+                    return;
+                }
+
+                if (dialogo.open) {
+                    dialogo.close();
+                }
+
+                atualizarSelo(
+                    "Nuvem • Estoque conectado"
+                );
+
+                if (etapa === "erro") {
+                    mostrarMensagem(
+                        detalhe,
+                        "erro"
+                    );
+                }
+
+                if (etapa === "pronto") {
+                    mostrarMensagem(
+                        "Estoque carregado do Supabase.",
+                        "sucesso"
+                    );
+                }
+
+                if (etapa === "salvo") {
+                    mostrarMensagem(
+                        (
+                            mensagemSucesso
+                                ? mensagemSucesso + " "
+                                : ""
+                        ) +
+                        "Salvamento confirmado no Supabase.",
+                        "sucesso"
+                    );
+                }
+            }
+
+            // -----------------------------------------
+            // CONECTA AS FUNÇÕES DA APLICAÇÃO
+            // -----------------------------------------
+
+            const repositorio = window.smiRepositorio;
+
+            if (
+                !repositorio?.lerEstoque ||
+                !repositorio?.salvarEstoque
+            ) {
+                painel(
+                    "Confira se nuvem.js está carregado e " +
+                    "contém lerEstoque e salvarEstoque.",
+                    true
+                );
+
+                executar = function () {};
+
+                gravarDados = function () {
+                    throw new Error(
+                        "Conexão indisponível."
+                    );
+                };
+
+                return;
+            }
+
+            const controle = criarControleNuvem(
+                repositorio,
+                localStorage,
+                aplicar,
+                avisar
+            );
+
+            window.smiNuvem = controle;
+
+            carregarDados = function () {
+                return controle.carregar();
+            };
+
+            gravarDados = function (proximosDados) {
+                dados = controle.gravar(proximosDados);
+
+                invalidarRelatorio();
+            };
+
+            mensagem = function (conteudo, tipo = "") {
+                if (
+                    controle.ocupado &&
+                    tipo === "sucesso"
+                ) {
+                    mensagemSucesso = conteudo;
+                    return;
+                }
+
+                mostrarMensagem(
+                    conteudo,
+                    tipo
+                );
+            };
+
+            executar = function (acao) {
+                if (!controle.ocupado) {
+                    mensagemSucesso = "";
+                }
+
+                return controle.executar(acao);
+            };
+
+            // Atualizar passa a buscar o estoque da nuvem.
+            document.getElementById(
+                "btnAtualizar"
+            )?.addEventListener(
+                "click",
+                function (evento) {
+                    evento.preventDefault();
+                    evento.stopImmediatePropagation();
+
+                    if (!controle.ocupado) {
+                        controle.abrir();
+                    }
+                },
+                true
+            );
+
+            // Avisa antes de fechar durante uma operação.
+            window.addEventListener(
+                "beforeunload",
+                function (evento) {
+                    if (!controle.ocupado) return;
+
+                    evento.preventDefault();
+                    evento.returnValue = "";
+                }
+            );
+
+            // -----------------------------------------
+            // CARREGA APÓS IDENTIFICAR A SESSÃO
+            // -----------------------------------------
+
+            let usuario = null;
+            let recebeuEvento = false;
+            let pedido = 0;
+
+            function sessaoAtual(sessao) {
+                const id = sessao?.user?.id || null;
+
+                if (
+                    id === usuario &&
+                    (
+                        controle.pronto ||
+                        controle.ocupado
+                    )
+                ) {
+                    return;
+                }
+
+                const atual = ++pedido;
+
+                if (id !== usuario || !id) {
+                    controle.bloquear();
+                }
+
+                usuario = id;
+
+                if (!id) {
+                    if (dialogo.open) {
+                        dialogo.close();
+                    }
+
+                    return;
+                }
+
+                setTimeout(function () {
+                    if (atual === pedido) {
+                        controle.abrir();
+                    }
+                }, 0);
+            }
+
+            window.smiSupabase.auth.onAuthStateChange(
+                function (evento, sessao) {
+                    if (
+                        ![
+                            "INITIAL_SESSION",
+                            "SIGNED_IN",
+                            "SIGNED_OUT"
+                        ].includes(evento)
+                    ) {
+                        return;
+                    }
+
+                    recebeuEvento = true;
+
+                    sessaoAtual(sessao);
+                }
+            );
+
+            window.smiSupabase.auth
+                .getSession()
+                .then(function ({ data, error }) {
+                    if (recebeuEvento) return;
+
+                    if (error) {
+                        painel(error.message, true);
+                        return;
+                    }
+
+                    sessaoAtual(data.session);
+                })
+                .catch(function (erro) {
+                    painel(erro.message, true);
+                });
+        }
+    );
+})();
