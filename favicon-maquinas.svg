@@ -1,0 +1,41 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64">
+
+  <defs>
+    <linearGradient id="azul"
+                    x1="0" y1="0"
+                    x2="1" y2="1">
+      <stop offset="0%" stop-color="#0089E8"/>
+      <stop offset="100%" stop-color="#0046A8"/>
+    </linearGradient>
+
+    <linearGradient id="amarelo"
+                    x1="0" y1="0"
+                    x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFD43B"/>
+      <stop offset="100%" stop-color="#FFAA00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Parte azul do símbolo -->
+  <path
+    d="M56 5
+       C39 7 24 13 20 24
+       C16 35 28 40 38 46
+       C44 50 43 54 34 60
+       C51 54 58 44 48 36
+       C40 29 28 27 32 20
+       C35 14 46 9 56 5Z"
+    fill="url(#azul)"/>
+
+  <!-- Parte amarela do símbolo -->
+  <path
+    d="M13 14
+       C3 26 5 37 16 44
+       C24 49 35 49 39 54
+       C30 58 17 56 10 49
+       C-1 38 2 23 13 14Z"
+    fill="url(#amarelo)"/>
+
+</svg>
