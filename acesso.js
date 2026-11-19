@@ -36,50 +36,41 @@
         const usuarioAtual =
             document.getElementById("usuarioAtual");
 
-        const sair = document.createElement("button");
+        // =========================================
+        // BOTÃO SAIR
+        // =========================================
 
-        sair.id = "smiSair";
-        sair.type = "button";
-        sair.textContent = "Sair";
+        let sair = document.getElementById("smiSair");
 
-        if (usuarioAtual) {
-            usuarioAtual.insertAdjacentElement(
-                "afterend",
-                sair
-            );
-        } else {
-            document.querySelector(".sidebar")?.appendChild(sair);
+        if (!sair) {
+            sair = document.createElement("button");
+
+            sair.id = "smiSair";
+            sair.type = "button";
+            sair.textContent = "Sair";
+
+            if (usuarioAtual) {
+                usuarioAtual.insertAdjacentElement(
+                    "afterend",
+                    sair
+                );
+            } else {
+                document.querySelector(".sidebar")
+                    ?.appendChild(sair);
+            }
         }
 
         let enviando = false;
 
-        function atualizarTela(sessao) {
-            const usuario = sessao?.user;
+        // Identifica a consulta mais recente para impedir
+        // que uma resposta antiga troque o nome do usuário.
+        let versaoUsuario = 0;
 
-            raiz.classList.toggle(
-                "smi-bloqueado",
-                !usuario
-            );
+        // =========================================
+        // EXIBIR NOME DO USUÁRIO
+        // =========================================
 
-            let nome = "";
-
-            if (usuario) {
-                const emailUsuario =
-                    usuario.email?.toLowerCase();
-
-                if (
-                    emailUsuario ===
-                    "logistica.br@smigroup.net"
-                ) {
-                    nome = "DAVI.SMI";
-                } else {
-                    nome =
-                        usuario.user_metadata?.display_name ||
-                        usuario.email ||
-                        "Usuário";
-                }
-            }
-
+        function mostrarNome(nome) {
             if (usuarioAtual) {
                 usuarioAtual.textContent = nome;
             }
@@ -91,13 +82,117 @@
                 usuarioConfiguracoes.textContent =
                     nome || "Sem usuário conectado";
             }
+        }
 
-            if (!usuario) {
+        // =========================================
+        // BUSCAR NOME NO SUPABASE
+        // =========================================
+
+        async function buscarNomeUsuario(usuario) {
+            if (!usuario?.id) {
+                return "";
+            }
+
+            const emailUsuario =
+                usuario.email?.trim().toLowerCase() || "";
+
+            // Nome provisório enquanto a consulta é feita.
+            const nomeProvisorio =
+                usuario.user_metadata?.display_name ||
+                usuario.email ||
+                "Usuário";
+
+            try {
+                const { data, error } = await cliente
+                    .from("maquinas_usuarios")
+                    .select("nome")
+                    .eq("usuario_id", usuario.id)
+                    .maybeSingle();
+
+                if (error) {
+                    throw error;
+                }
+
+                const nomeBanco =
+                    typeof data?.nome === "string"
+                        ? data.nome.trim()
+                        : "";
+
+                if (nomeBanco) {
+                    return nomeBanco;
+                }
+
+            } catch (erro) {
+                console.warn(
+                    "Não foi possível consultar o nome do usuário:",
+                    erro
+                );
+            }
+
+            // Compatibilidade com as contas já existentes.
+            // A prioridade continua sendo o nome cadastrado
+            // na tabela maquinas_usuarios.
+
+            const nomesConhecidos = {
+                "logistica.br@smigroup.net": "DAVI.SMI",
+                "vander.oliveira@smigroup.net": "VANDER.SMI"
+            };
+
+            return (
+                nomesConhecidos[emailUsuario] ||
+                nomeProvisorio
+            );
+        }
+
+        // =========================================
+        // ATUALIZAR TELA DE ACESSO
+        // =========================================
+
+        function atualizarTela(sessao) {
+            const usuario = sessao?.user;
+
+            const versaoAtual = ++versaoUsuario;
+
+            raiz.classList.toggle(
+                "smi-bloqueado",
+                !usuario
+            );
+
+            if (usuario) {
+                // Exibe um nome provisório imediatamente.
+                mostrarNome(
+                    usuario.user_metadata?.display_name ||
+                    usuario.email ||
+                    "Usuário"
+                );
+
+                // Busca o nome correto sem bloquear a tela.
+                buscarNomeUsuario(usuario)
+                    .then(nome => {
+                        // Não altera o nome se a sessão mudou.
+                        if (versaoAtual !== versaoUsuario) {
+                            return;
+                        }
+
+                        mostrarNome(nome);
+                    })
+                    .catch(erro => {
+                        console.warn(
+                            "Falha ao atualizar nome:",
+                            erro
+                        );
+                    });
+
+                mensagem.textContent = "";
+
+            } else {
+                mostrarNome("");
+
                 document
                     .querySelectorAll("dialog[open]")
-                    .forEach(dialogo => dialogo.close());
-            } else {
-                mensagem.textContent = "";
+                    .forEach(dialogo => {
+                        dialogo.close();
+                    });
             }
 
             if (!enviando) {
@@ -106,25 +201,35 @@
             }
         }
 
+        // =========================================
+        // ACOMPANHAR SESSÃO
+        // =========================================
+
         /*
-         * Acompanha login, logout e renovação da sessão.
-         * Não faz chamadas Auth dentro deste callback.
+         * Mantemos o callback de autenticação sem
+         * consultas assíncronas diretas ao Auth.
+         *
+         * A busca do nome acontece separadamente.
          */
+
         let recebeuEvento = false;
 
-        cliente.auth.onAuthStateChange((evento, sessao) => {
-            recebeuEvento = true;
+        cliente.auth.onAuthStateChange(
+            (evento, sessao) => {
+                recebeuEvento = true;
 
-            if (evento === "SIGNED_OUT") {
-                senha.value = "";
+                if (evento === "SIGNED_OUT") {
+                    senha.value = "";
+                }
+
+                atualizarTela(sessao);
             }
+        );
 
-            atualizarTela(sessao);
-        });
+        // =========================================
+        // RECUPERAR SESSÃO EXISTENTE
+        // =========================================
 
-        /*
-         * Recupera uma sessão já existente.
-         */
         cliente.auth.getSession()
             .then(({ data, error }) => {
                 if (recebeuEvento) {
@@ -150,9 +255,10 @@
                     "Confira a conexão e tente entrar.";
             });
 
-        /*
-         * Entrar.
-         */
+        // =========================================
+        // ENTRAR NO SISTEMA
+        // =========================================
+
         formulario.addEventListener(
             "submit",
             async evento => {
@@ -182,12 +288,14 @@
                         ) {
                             mensagem.textContent =
                                 "E-mail ou senha incorretos.";
+
                         } else if (
                             error.message ===
                             "Email not confirmed"
                         ) {
                             mensagem.textContent =
                                 "O e-mail ainda não foi confirmado no Supabase.";
+
                         } else {
                             mensagem.textContent =
                                 "Não foi possível entrar. " +
@@ -208,10 +316,17 @@
                     senha.value = "";
 
                     atualizarTela(data.session);
-                } catch {
+
+                } catch (erro) {
+                    console.error(
+                        "Erro no login:",
+                        erro
+                    );
+
                     mensagem.textContent =
                         "Não foi possível conectar. " +
                         "Confira sua internet.";
+
                 } finally {
                     enviando = false;
 
@@ -221,39 +336,58 @@
             }
         );
 
-        /*
-         * Sair deste navegador.
-         */
-        sair.addEventListener("click", async () => {
-            sair.disabled = true;
+        // =========================================
+        // SAIR DO SISTEMA
+        // =========================================
 
-            try {
-                const { error } =
-                    await cliente.auth.signOut({
-                        scope: "local"
-                    });
+        sair.addEventListener(
+            "click",
+            async () => {
+                sair.disabled = true;
 
-                if (error) {
-                    throw error;
+                try {
+                    const { error } =
+                        await cliente.auth.signOut({
+                            scope: "local"
+                        });
+
+                    if (error) {
+                        throw error;
+                    }
+
+                    senha.value = "";
+
+                    atualizarTela(null);
+
+                    mensagem.textContent = "";
+
+                    email.focus();
+
+                } catch (erro) {
+                    console.error(
+                        "Erro ao sair:",
+                        erro
+                    );
+
+                    alert(
+                        "Não foi possível sair. " +
+                        "Confira a conexão e tente novamente."
+                    );
+
+                } finally {
+                    sair.disabled = false;
                 }
-
-                senha.value = "";
-
-                atualizarTela(null);
-
-                mensagem.textContent = "";
-
-                email.focus();
-            } catch {
-                alert(
-                    "Não foi possível sair. " +
-                    "Confira a conexão e tente novamente."
-                );
-            } finally {
-                sair.disabled = false;
             }
-        });
+        );
+
+        console.log(
+            "SMI Máquinas: controle de acesso carregado."
+        );
     }
+
+    // =========================================
+    // INICIALIZAÇÃO
+    // =========================================
 
     if (document.readyState === "loading") {
         document.addEventListener(
@@ -264,4 +398,5 @@
     } else {
         iniciarAcesso();
     }
+
 })();
