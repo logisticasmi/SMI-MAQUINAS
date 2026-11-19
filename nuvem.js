@@ -42,7 +42,7 @@
     };
   }
 
-    async function salvarEstoque(dados, revisao) {
+  async function salvarEstoque(dados, revisao) {
     if (
       dados?.versao !== 1 ||
       !Array.isArray(dados.entradas) ||

@@ -72,14 +72,9 @@ const MODELOS = [
     "XP650 ARX",
     "FP8000CS",
     "WPS 600R"
-
 ];
 
 // Fotos utilizadas nos dois catálogos.
-// Exemplo:
-// "HS500": "img/hs500.jpg"
-
-
 
 const FOTOS_MODELOS = {
     "HS500": "img/hs500.png",
@@ -133,11 +128,8 @@ const FOTOS_MODELOS = {
     "GHS2000/700R": "img/ghs200-700r.png",
     "GHS2000/400F": "img/ghs200-400f.png",
     "GHS2000/400P": "img/gh200-400p.png",
-    "GHS2000/400S": "img/ghs2000-400s.png",
-
+    "GHS2000/400S": "img/ghs2000-400s.png"
 };
-
-
 
 const CHAVE_DADOS = "smi_maquinas_teste_v1";
 const POR_PAGINA = 9;
@@ -378,7 +370,7 @@ function expirarReservas() {
         new Date(item.vencimento).getTime() <= Date.now()
     );
 
-    if (!vencidas.length) return 0;
+        if (!vencidas.length) return 0;
 
     const ids = new Set(vencidas.map(item => item.id));
     const agora = new Date().toISOString();
@@ -1228,7 +1220,8 @@ function registrarSaida(evento) {
 
         const reserva = dados.reservas.find(
             item => item.id === reservaId
-        );
+
+                    );
 
         if (
             reservaId &&
@@ -2078,7 +2071,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         botaoGrade.setAttribute(
             "aria-pressed",
-            String(!lista)
+
+                        String(!lista)
         );
 
         botaoLista.setAttribute(
@@ -2928,7 +2922,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <button type="button" class="btn" data-ru="Expirada">Expiradas</button>
         </div>
 
-        <form id="ruFiltros" class="card catalogo-filtros">
+                <form id="ruFiltros" class="card catalogo-filtros">
             <div class="campo campo-busca">
                 <label for="ruBusca">Buscar</label>
                 <input
@@ -3778,7 +3772,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 <p
                     id="mensagemImportacaoExcel"
-                    role="status"
+
+                                        role="status"
                     aria-live="polite"
                 ></p>
             </div>
@@ -4628,7 +4623,8 @@ document.addEventListener("DOMContentLoaded", function () {
         .linha-conjunto {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+
+                        align-items: center;
             gap: 12px;
             padding: 9px;
             border-bottom: 1px solid #32536b;
@@ -4838,7 +4834,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     }
 
-        function mostrarItens() {
+    function mostrarItens() {
         lista.replaceChildren();
 
         if (!extras.length) return;
@@ -5478,7 +5474,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             #dadosCompletosFormulario textarea {
-                overflow: visible;
+
+                            overflow: visible;
                 resize: none;
             }
         }
@@ -6329,7 +6326,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // MONTA A TELA
     // -------------------------------------------------
 
-    document.addEventListener("DOMContentLoaded", function () {
+        document.addEventListener("DOMContentLoaded", function () {
         if (document.getElementById("telaConfiguracoesSmi")) {
             return;
         }
@@ -7178,7 +7175,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     validar(registro.dados);
 
                     if (
-                        !Number.isSafeInteger(registro.revisao) ||
+
+                                                !Number.isSafeInteger(registro.revisao) ||
                         registro.revisao < 1
                     ) {
                         throw new Error(
@@ -7721,7 +7719,6 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 })();
 
-
 /* =====================================================
    SMI MÁQUINAS — CATÁLOGO EM PÁGINA ÚNICA
    VERSÃO 2026
@@ -7811,10 +7808,10 @@ renderizarCatalogo = function () {
 
             foto.alt = "Máquina " + modelo;
 
-          foto.loading = "eager";
-foto.decoding = "async";
-foto.hidden = false;
-semFoto.hidden = true;
+            foto.loading = "eager";
+            foto.decoding = "async";
+            foto.hidden = false;
+            semFoto.hidden = true;
 
             foto.addEventListener("load", function () {
                 foto.hidden = false;

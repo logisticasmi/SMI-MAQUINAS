@@ -1,25 +1,35 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR" class="smi-bloqueado">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
+
     <title>SMI Máquinas</title>
-<link rel="icon" type="image/svg+xml" href="./favicon-maquinas.svg?v=1">
+
+    <link rel="icon"
+          type="image/svg+xml"
+          href="./favicon-maquinas.svg?v=1">
+
     <link rel="stylesheet" href="style.css">
 
-
     <style>
-        [hidden] { display: none !important; }
+        [hidden] {
+            display: none !important;
+        }
 
         .modelo-saldos {
             grid-template-columns:
                 repeat(4, minmax(0, 1fr)) !important;
         }
 
-        .modelo-saldos dt { font-size: 10px; }
-        .modelo-vendidas { color: #cc4055; }
+        .modelo-saldos dt {
+            font-size: 10px;
+        }
+
+        .modelo-vendidas {
+            color: #cc4055;
+        }
 
         .painel-reserva {
             max-height: 90vh;
@@ -27,7 +37,9 @@
         }
 
         @media (max-width: 1100px) {
-            .painel-reserva { max-height: none; }
+            .painel-reserva {
+                max-height: none;
+            }
         }
 
         html.smi-bloqueado body > :not(#smiAcesso) {
@@ -144,7 +156,9 @@
         }
 
         @media (max-width: 480px) {
-            #smiAcesso .acesso-cartao { padding: 24px; }
+            #smiAcesso .acesso-cartao {
+                padding: 24px;
+            }
         }
     </style>
 </head>
@@ -152,7 +166,7 @@
 <body>
 
 <!-- ============================================= -->
-<!-- TELA DE LOGIN                               -->
+<!-- TELA DE LOGIN                                -->
 <!-- ============================================= -->
 
 <section id="smiAcesso"
@@ -164,11 +178,13 @@
              alt="SMI Group">
 
         <h1>SMI MÁQUINAS</h1>
+
         <p>Entre para acessar o sistema.</p>
 
         <form id="smiFormAcesso">
 
             <label for="acessoEmail">E-mail</label>
+
             <input id="acessoEmail"
                    type="email"
                    autocomplete="username"
@@ -176,6 +192,7 @@
                    required>
 
             <label for="acessoSenha">Senha</label>
+
             <input id="acessoSenha"
                    type="password"
                    autocomplete="current-password"
@@ -207,7 +224,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- MENU LATERAL                                -->
+<!-- MENU LATERAL                                 -->
 <!-- ============================================= -->
 
 <aside class="sidebar">
@@ -234,8 +251,10 @@
                 class="menu-item menu-dashboard"
                 id="btnDashboardSMI"
                 aria-controls="telaDashboardSMI">
+
             <span class="menu-icone"
                   aria-hidden="true">▦</span>
+
             Dashboard
         </button>
 
@@ -288,7 +307,7 @@
 </aside>
 
 <!-- ============================================= -->
-<!-- CONTEÚDO PRINCIPAL                          -->
+<!-- CONTEÚDO PRINCIPAL                           -->
 <!-- ============================================= -->
 
 <main class="conteudo">
@@ -297,6 +316,7 @@
 
         <div>
             <p class="sobretitulo">SMI MÁQUINAS</p>
+
             <h1 id="tituloPagina">
                 Estoque de máquinas
             </h1>
@@ -316,14 +336,14 @@
 
     </header>
 
-    <div id="mensagemSistema"
+        <div id="mensagemSistema"
          class="mensagem-sistema"
          role="status"
          aria-live="polite"
          hidden></div>
 
 <!-- ============================================= -->
-<!-- NOVO DASHBOARD                              -->
+<!-- NOVO DASHBOARD                               -->
 <!-- ============================================= -->
 
 <section id="telaDashboardSMI"
@@ -487,7 +507,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- INDICADORES ORIGINAIS                       -->
+<!-- INDICADORES ORIGINAIS                        -->
 <!-- ============================================= -->
 
 <section class="indicadores"
@@ -529,7 +549,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- ESTOQUE                                    -->
+<!-- ESTOQUE                                     -->
 <!-- ============================================= -->
 
 <section id="telaEstoque" class="tela">
@@ -689,7 +709,7 @@
                                required>
                     </div>
 
-                    <div class="campo">
+                                        <div class="campo">
                         <label for="reservaSerie">
                             S/N *
                         </label>
@@ -793,7 +813,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- ENTRADAS                                   -->
+<!-- ENTRADAS                                    -->
 <!-- ============================================= -->
 
 <section id="telaEntradas" class="tela" hidden>
@@ -914,7 +934,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- SAÍDAS                                     -->
+<!-- SAÍDAS                                      -->
 <!-- ============================================= -->
 
 <section id="telaSaidas" class="tela" hidden>
@@ -1051,7 +1071,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- RESERVAS                                   -->
+<!-- RESERVAS                                    -->
 <!-- ============================================= -->
 
 <section id="telaReservas" class="tela" hidden>
@@ -1068,7 +1088,7 @@
 
     <div class="catalogo-filtros">
 
-        <div class="campo">
+                <div class="campo">
 
             <label for="buscaReserva">
                 Buscar registro
@@ -1151,7 +1171,7 @@
 </section>
 
 <!-- ============================================= -->
-<!-- RELATÓRIOS                                 -->
+<!-- RELATÓRIOS                                  -->
 <!-- ============================================= -->
 
 <section id="telaRelatorios" class="tela" hidden>
@@ -1268,7 +1288,7 @@
 </main>
 
 <!-- ============================================= -->
-<!-- MODELO DOS CARDS DE MÁQUINAS                -->
+<!-- MODELO DOS CARDS DE MÁQUINAS                 -->
 <!-- ============================================= -->
 
 <template id="templateCardModelo">
@@ -1328,7 +1348,7 @@
 </template>
 
 <!-- ============================================= -->
-<!-- SCRIPTS — CARREGAR NESTA ORDEM              -->
+<!-- SCRIPTS — CARREGAR NESTA ORDEM               -->
 <!-- ============================================= -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1343,14 +1363,11 @@
 <script src="smi-formulario-correcao.js"></script>
 <script src="smi-top5-dashboard.js"></script>
 <script src="smi-menu-maquinas.js"></script>
-</body>
-</html>
 
-
-<!-- ==========================================
+<!-- =============================================
      SMI MÁQUINAS — CORREÇÃO DOS CALENDÁRIOS
      TELA DE EXPORTAÇÕES / RELATÓRIOS
-     ========================================== -->
+     ============================================= -->
 
 <style>
     #relatorioInicio,
@@ -1399,3 +1416,5 @@
 })();
 </script>
 
+</body>
+</html>
