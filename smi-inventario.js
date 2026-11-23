@@ -1,4 +1,3 @@
-
 /* ==========================================================
    SMI MÁQUINAS — INVENTÁRIO GERAL
    Integração Supabase — 2026
@@ -706,7 +705,7 @@
                     Contagem única dos dois estoques.
                     Reservas ativas entram no estoque físico.
                     Máquinas vendidas e já baixadas não entram.
-                    O inventário não altera saldos.
+                    A contagem só altera os saldos depois da aprovação.
                 </p>
             </div>
 
@@ -788,6 +787,18 @@
                     role="status"
                     aria-live="polite"
                     hidden></p>
+            </div>
+
+            <div class="inv-painel" id="invPainelAprovacao" hidden>
+                <h3>Aprovar ajustes do inventário</h3>
+                <p class="inv-nota">Informe a diferença em cada local. Use números negativos para retirar máquinas e positivos para acrescentar. A soma dos dois locais deve ser igual à divergência geral.</p>
+                <div class="inv-tabela-container">
+                    <table class="inv-tabela">
+                        <thead><tr><th>Modelo</th><th>Diferença geral</th><th>Ajuste Estoque Principal</th><th>Ajuste Show Room</th></tr></thead>
+                        <tbody id="invTabelaAprovacao"></tbody>
+                    </table>
+                </div>
+                <button type="button" id="invAprovar" class="btn btn-primario">Aprovar e atualizar Estoque</button>
             </div>
 
             <div class="inv-painel" id="invHistorico">
@@ -1277,7 +1288,8 @@
             divergencias: linhas.filter(
                 x => x.diferenca !== 0
             ).length,
-            detalhes: linhas
+            registros: linhas,
+            revisao_estoque: referencia.revisao
         };
     }
 
@@ -1356,8 +1368,10 @@
 
             mensagem(
                 "Inventário registrado no Supabase com sucesso. " +
-                "Nenhum saldo foi alterado."
+                "Nenhum saldo foi alterado. Confira os ajustes antes de aprovar."
             );
+
+            mostrarAprovacao(payload);
 
             await carregarHistorico();
 
@@ -1378,6 +1392,115 @@
     }
 
     /* ======================================================
+       APROVAÇÃO DOS AJUSTES (EXECUÇÃO ATÔMICA NO SUPABASE)
+       ====================================================== */
+
+    let pendenteAprovacao = null;
+
+    function mostrarAprovacao(inventario) {
+        const painel = el("invPainelAprovacao");
+        const corpo = el("invTabelaAprovacao");
+        painel.hidden = true;
+        corpo.replaceChildren();
+        pendenteAprovacao = null;
+
+        if (inventario.aprovado_em) {
+            mensagem("Este inventário já está aprovado.");
+            return;
+        }
+        if (!inventario.revisao_estoque) {
+            mensagem("Este inventário antigo não tem revisão do estoque. Faça uma nova contagem para aprová-lo.", true);
+            return;
+        }
+
+        const divergentes = (inventario.registros || []).filter(
+            item => item.diferenca !== 0
+        );
+        pendenteAprovacao = inventario;
+
+        divergentes.forEach(item => {
+            const tr = document.createElement("tr");
+            const modelo = document.createElement("td");
+            modelo.textContent = item.modelo;
+            const diferenca = document.createElement("td");
+            diferenca.textContent = item.diferenca > 0
+                ? "+" + item.diferenca : String(item.diferenca);
+            const principal = document.createElement("input");
+            principal.type = "number";
+            principal.step = "1";
+            principal.value = "0";
+            principal.dataset.modelo = item.modelo;
+            principal.className = "inv-ajuste-principal inv-quantidade";
+            const showroom = document.createElement("input");
+            showroom.type = "number";
+            showroom.step = "1";
+            showroom.value = String(item.diferenca);
+            showroom.dataset.modelo = item.modelo;
+            showroom.className = "inv-ajuste-showroom inv-quantidade";
+            const c1 = document.createElement("td");
+            const c2 = document.createElement("td");
+            c1.append(principal);
+            c2.append(showroom);
+            tr.append(modelo, diferenca, c1, c2);
+            corpo.append(tr);
+        });
+
+        painel.hidden = false;
+        painel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function aprovarAjustes() {
+        const inv = pendenteAprovacao;
+        if (!inv || gravando) return;
+
+        const ajustes = [];
+        for (const item of inv.registros.filter(x => x.diferenca !== 0)) {
+            const inputs = [...el("invTabelaAprovacao").querySelectorAll("input")];
+            const principalInput = inputs.find(x =>
+                x.classList.contains("inv-ajuste-principal") && x.dataset.modelo === item.modelo
+            );
+            const showroomInput = inputs.find(x =>
+                x.classList.contains("inv-ajuste-showroom") && x.dataset.modelo === item.modelo
+            );
+            const principal = Number(principalInput?.value);
+            const showroom = Number(showroomInput?.value);
+            if (!principalInput?.value.trim() || !showroomInput?.value.trim() ||
+                !Number.isSafeInteger(principal) || !Number.isSafeInteger(showroom) ||
+                principal + showroom !== item.diferenca) {
+                mensagem("Confira os ajustes do modelo " + item.modelo +
+                    ": a soma dos dois locais deve ser " + item.diferenca + ".", true);
+                return;
+            }
+            ajustes.push({ modelo: item.modelo, principal, showroom });
+        }
+
+        if (!window.confirm(
+            "APROVAR e ALTERAR o Estoque Principal/Show Room?\n\n" +
+            "Esta ação não poderá ser repetida. Confira as quantidades por local."
+        )) return;
+
+        gravando = true;
+        el("invAprovar").disabled = true;
+        try {
+            const { error } = await cliente().rpc("maquinas_aprovar_inventario", {
+                p_inventario: inv.id,
+                p_ajustes: ajustes
+            });
+            if (error) throw error;
+            pendenteAprovacao = null;
+            el("invPainelAprovacao").hidden = true;
+            mensagem("Inventário aprovado. Ajustes aplicados ao estoque na nuvem. Atualize a tela do Estoque para conferir.");
+            await carregarHistorico();
+        } catch (erro) {
+            mensagem("Não foi possível confirmar a aprovação: " + erro.message +
+                ". Confira o inventário e os saldos na nuvem antes de repetir.", true);
+        } finally {
+            gravando = false;
+            el("invAprovar").disabled = false;
+        }
+    }
+
+    /* ======================================================
        HISTÓRICO COMPARTILHADO
        ====================================================== */
 
@@ -1394,7 +1517,7 @@
                 .select(
                     "id,data_inventario,responsavel," +
                     "identificacao,total_sistema,total_fisico," +
-                    "modelos_contados,divergencias,criado_em"
+                    "modelos_contados,divergencias,criado_em,aprovado_em"
                 )
                 .order("criado_em", {
                     ascending: false
@@ -1462,6 +1585,24 @@
             });
 
             acoes.append(botao);
+            if (!item.aprovado_em) {
+                const aprovar = document.createElement("button");
+                aprovar.type = "button";
+                aprovar.className = "inv-mini-btn";
+                aprovar.textContent = "Conferir ajustes";
+                aprovar.addEventListener("click", async () => {
+                    try {
+                        const { data, error } = await cliente()
+                            .from(TABELA).select("*")
+                            .eq("id", item.id).single();
+                        if (error) throw error;
+                        mostrarAprovacao(data);
+                    } catch (erro) {
+                        mensagem(erro.message, true);
+                    }
+                });
+                acoes.append(aprovar);
+            }
             linha.append(acoes);
             corpo.append(linha);
         });
@@ -1529,7 +1670,7 @@
 
             const tbody = document.createElement("tbody");
 
-            (data.detalhes || []).forEach(item => {
+            (data.registros || []).forEach(item => {
                 const tr = document.createElement("tr");
 
                 [
@@ -1596,6 +1737,7 @@
             contagens = {};
             finalizado = false;
             idEnvio = null;
+            el("invPainelAprovacao").hidden = true;
 
             limparRascunho();
 
@@ -1763,6 +1905,7 @@
        ====================================================== */
 
     function configurarEventos() {
+        el("invAprovar").addEventListener("click", aprovarAjustes);
         el("invAtualizar").addEventListener(
             "click", atualizarSaldos
         );
