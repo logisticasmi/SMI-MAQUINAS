@@ -1,10 +1,11 @@
+
 /* ==========================================================
    SMI MÁQUINAS — INVENTÁRIO GERAL
    Integração Supabase — 2026
 
    Contagem: ESTOQUE PRINCIPAL + SHOW ROOM
    Histórico compartilhado na nuvem
-   Sem alterações nos saldos das máquinas
+   Saldos alterados somente após aprovação
    ========================================================== */
 
 (() => {
@@ -12,7 +13,17 @@
 
     const TABELA = "inventarios_maquinas";
     const TELA = "telaInventarioSMI";
-    const RASCUNHO = "smi_inventario_rascunho_v2";
+    const RASCUNHO = "smi_inventario_por_local_v3";
+
+    const LOCAIS = ["estoque", "showroom"];
+
+    const nomeLocal = setor =>
+        setor === "showroom"
+            ? "Show Room"
+            : "Estoque Principal";
+
+    const chave = item =>
+        `${item.setor}::${item.modelo}`;
 
     const el = id => document.getElementById(id);
 
@@ -111,6 +122,7 @@
                 JSON.stringify({
                     usuarioId,
                     contagens,
+                    setor: el("invLocal")?.value || "estoque",
                     idEnvio,
                     data: el("invData")?.value || "",
                     responsavel:
@@ -147,6 +159,12 @@
             }
 
             contagens = salvo.contagens || {};
+
+            el("invLocal").value =
+                LOCAIS.includes(salvo.setor)
+                    ? salvo.setor
+                    : "estoque";
+
             idEnvio = salvo.idEnvio || null;
 
             el("invData").value =
@@ -171,7 +189,7 @@
     }
 
     /* ======================================================
-       ESTOQUE CONSOLIDADO DIRETO DA NUVEM
+       ESTOQUE POR LOCAL DIRETO DA NUVEM
        ====================================================== */
 
     async function consultarEstoque() {
@@ -204,31 +222,52 @@
             );
         }
 
-        const modelos = MODELOS.map(modelo => {
-            // Entradas e saídas de ambos os depósitos.
-            // Reservas não diminuem o estoque físico.
+        const modelos = LOCAIS.flatMap(setor =>
+            MODELOS.map(modelo => {
 
-            const entradas = estado.entradas
-                .filter(item => item.modelo === modelo)
-                .reduce(
-                    (soma, item) =>
-                        soma + Number(item.quantidade || 0),
-                    0
-                );
+                // Reservas não diminuem o estoque físico.
 
-            const saidas = estado.saidas
-                .filter(item => item.modelo === modelo)
-                .reduce(
-                    (soma, item) =>
-                        soma + Number(item.quantidade || 0),
-                    0
-                );
+                const entradas = estado.entradas
+                    .filter(item =>
+                        item.modelo === modelo &&
+                        (
+                            item.setor === "showroom"
+                                ? "showroom"
+                                : "estoque"
+                        ) === setor
+                    )
+                    .reduce(
+                        (soma, item) =>
+                            soma + Number(
+                                item.quantidade || 0
+                            ),
+                        0
+                    );
 
-            return {
-                modelo,
-                sistema: entradas - saidas
-            };
-        });
+                const saidas = estado.saidas
+                    .filter(item =>
+                        item.modelo === modelo &&
+                        (
+                            item.setor === "showroom"
+                                ? "showroom"
+                                : "estoque"
+                        ) === setor
+                    )
+                    .reduce(
+                        (soma, item) =>
+                            soma + Number(
+                                item.quantidade || 0
+                            ),
+                        0
+                    );
+
+                return {
+                    modelo,
+                    setor,
+                    sistema: entradas - saidas
+                };
+            })
+        );
 
         return {
             revisao: resultado.revisao,
@@ -249,6 +288,7 @@
             item.fisico !== null
         );
     }
+
 
     /* ======================================================
        CRIAR ESTILOS
@@ -612,6 +652,8 @@
         document.head.appendChild(style);
     }
 
+
+
     /* ======================================================
        CRIAR INTERFACE
        ====================================================== */
@@ -633,8 +675,8 @@
                 <div>
                     <h2>Inventário Geral de Máquinas</h2>
                     <p>
-                        Contagem consolidada:
-                        Estoque Principal + Show Room
+                        Contagem separada por local:
+                        Estoque Principal e Show Room
                     </p>
                 </div>
 
@@ -702,15 +744,46 @@
                 </div>
 
                 <p class="inv-nota">
-                    Contagem única dos dois estoques.
+                    Selecione o local e conte as máquinas
+                    de cada depósito.
+
                     Reservas ativas entram no estoque físico.
+
                     Máquinas vendidas e já baixadas não entram.
-                    A contagem só altera os saldos depois da aprovação.
+
+                    Conte os dois locais antes de finalizar.
+                    Os saldos só mudam após a aprovação.
                 </p>
             </div>
 
             <div class="inv-painel">
                 <h3>Contagem física</h3>
+
+                <label style="
+                    display:block;
+                    max-width:360px;
+                    margin:12px 0;
+                    font-weight:700;
+                ">
+                    Local da contagem
+
+                    <select id="invLocal" style="
+                        display:block;
+                        width:100%;
+                        padding:12px;
+                        margin-top:6px;
+                        border:1px solid #cbd9ea;
+                        border-radius:8px;
+                    ">
+                        <option value="estoque">
+                            Estoque Principal
+                        </option>
+
+                        <option value="showroom">
+                            Show Room
+                        </option>
+                    </select>
+                </label>
 
                 <p id="invFinalizado"
                     class="inv-finalizado" hidden>
@@ -727,12 +800,15 @@
                         <option value="todos">
                             Todos os modelos
                         </option>
+
                         <option value="pendentes">
                             Pendentes
                         </option>
+
                         <option value="divergentes">
                             Com divergência
                         </option>
+
                         <option value="conferidos">
                             Conferidos
                         </option>
@@ -789,16 +865,35 @@
                     hidden></p>
             </div>
 
-            <div class="inv-painel" id="invPainelAprovacao" hidden>
+            <div class="inv-painel"
+                id="invPainelAprovacao" hidden>
+
                 <h3>Aprovar ajustes do inventário</h3>
-                <p class="inv-nota">Informe a diferença em cada local. Use números negativos para retirar máquinas e positivos para acrescentar. A soma dos dois locais deve ser igual à divergência geral.</p>
+
+                <p class="inv-nota">
+                    As divergências já estão identificadas
+                    por local. Confira antes de aprovar.
+                </p>
+
                 <div class="inv-tabela-container">
                     <table class="inv-tabela">
-                        <thead><tr><th>Modelo</th><th>Diferença geral</th><th>Ajuste Estoque Principal</th><th>Ajuste Show Room</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Modelo</th>
+                                <th>Local</th>
+                                <th>Diferença</th>
+                            </tr>
+                        </thead>
+
                         <tbody id="invTabelaAprovacao"></tbody>
                     </table>
                 </div>
-                <button type="button" id="invAprovar" class="btn btn-primario">Aprovar e atualizar Estoque</button>
+
+                <button type="button"
+                    id="invAprovar"
+                    class="btn btn-primario">
+                    Aprovar e atualizar Estoque
+                </button>
             </div>
 
             <div class="inv-painel" id="invHistorico">
@@ -867,8 +962,10 @@
                 stroke-width="1.8"
                 stroke-linecap="round"
                 stroke-linejoin="round">
+
                 <rect x="4" y="3"
                     width="16" height="18" rx="2"/>
+
                 <path d="M8 3.5h8"/>
                 <path d="M8 10l2 2 4-4"/>
                 <path d="M8 17h8"/>
@@ -891,7 +988,10 @@
             menu.appendChild(botao);
         }
 
-        botao.addEventListener("click", abrirInventario);
+        botao.addEventListener(
+            "click",
+            abrirInventario
+        );
     }
 
     /* ======================================================
@@ -910,7 +1010,9 @@
         const indicadores =
             document.querySelector(".indicadores");
 
-        if (indicadores) indicadores.hidden = true;
+        if (indicadores) {
+            indicadores.hidden = true;
+        }
 
         document.querySelectorAll(
             ".sidebar .menu-item"
@@ -963,7 +1065,9 @@
         const indicadores =
             document.querySelector(".indicadores");
 
-        if (indicadores) indicadores.hidden = false;
+        if (indicadores) {
+            indicadores.hidden = false;
+        }
 
         const botao = el("btnInventarioSMI");
 
@@ -971,12 +1075,14 @@
         botao.removeAttribute("aria-current");
     }
 
+
+
     /* ======================================================
        CONTAGENS
        ====================================================== */
 
     function estadoContagem(item) {
-        const registro = contagens[item.modelo];
+        const registro = contagens[chave(item)];
 
         if (
             !registro ||
@@ -995,7 +1101,9 @@
     function atualizarIndicadores() {
         if (!referencia) return;
 
-        const modelos = referencia.modelos;
+        const modelos = referencia.modelos.filter(
+            item => item.setor === el("invLocal").value
+        );
 
         let total = 0;
         let contados = 0;
@@ -1016,6 +1124,7 @@
         });
 
         el("invTotalSistema").textContent = total;
+
         el("invContados").textContent = contados;
 
         el("invPendentes").textContent =
@@ -1031,6 +1140,10 @@
             Number(valor) >= 0;
     }
 
+    /* ======================================================
+       RENDERIZAR TABELA
+       ====================================================== */
+
     function renderizarTabela() {
         if (!referencia) return;
 
@@ -1045,20 +1158,27 @@
         const modelos = referencia.modelos.filter(item => {
             const status = estadoContagem(item);
 
-            return item.modelo.toLowerCase().includes(busca) &&
+            return item.setor === el("invLocal").value &&
+                item.modelo.toLowerCase().includes(busca) &&
                 (
                     filtro === "todos" ||
-                    (filtro === "pendentes" &&
-                        status === "pendente") ||
-                    (filtro === "divergentes" &&
-                        status === "divergente") ||
-                    (filtro === "conferidos" &&
-                        status === "conferido")
+                    (
+                        filtro === "pendentes" &&
+                        status === "pendente"
+                    ) ||
+                    (
+                        filtro === "divergentes" &&
+                        status === "divergente"
+                    ) ||
+                    (
+                        filtro === "conferidos" &&
+                        status === "conferido"
+                    )
                 );
         });
 
         modelos.forEach(item => {
-            const registro = contagens[item.modelo] || {};
+            const registro = contagens[chave(item)] || {};
 
             const linha = document.createElement("tr");
 
@@ -1099,9 +1219,15 @@
 
             celObs.append(obs);
 
+            /* ==============================================
+               ATUALIZAR SITUAÇÃO DA LINHA
+               ============================================== */
+
             function atualizarLinha() {
                 const estado = estadoContagem(item);
-                const valor = contagens[item.modelo]?.fisico;
+
+                const valor =
+                    contagens[chave(item)]?.fisico;
 
                 const nomes = {
                     pendente: "Pendente",
@@ -1138,6 +1264,10 @@
                             : "inv-neutro";
             }
 
+            /* ==============================================
+               REGISTRAR CONTAGEM FÍSICA
+               ============================================== */
+
             fisico.addEventListener("input", () => {
                 const valor = fisico.value.trim();
 
@@ -1145,16 +1275,17 @@
                     fisico.setCustomValidity(
                         "Informe um número inteiro não negativo."
                     );
+
                     fisico.reportValidity();
                     return;
                 }
 
                 fisico.setCustomValidity("");
 
-                contagens[item.modelo] = {
+                contagens[chave(item)] = {
                     fisico: valor,
                     observacao:
-                        contagens[item.modelo]?.observacao || ""
+                        contagens[chave(item)]?.observacao || ""
                 };
 
                 atualizarLinha();
@@ -1162,10 +1293,14 @@
                 salvarRascunho();
             });
 
+            /* ==============================================
+               REGISTRAR OBSERVAÇÕES
+               ============================================== */
+
             obs.addEventListener("input", () => {
-                contagens[item.modelo] = {
+                contagens[chave(item)] = {
                     fisico:
-                        contagens[item.modelo]?.fisico ?? "",
+                        contagens[chave(item)]?.fisico ?? "",
                     observacao: obs.value
                 };
 
@@ -1198,23 +1333,37 @@
         }
     }
 
+    /* ======================================================
+       ATUALIZAR TELA
+       ====================================================== */
+
     function renderizar() {
         atualizarIndicadores();
         renderizarTabela();
 
         el("invFinalizado").hidden = !finalizado;
-        el("invSalvar").disabled = finalizado || gravando;
-        el("invLimpar").disabled = finalizado || gravando;
-        el("invAtualizar").disabled = finalizado || gravando;
+
+        el("invSalvar").disabled =
+            finalizado || gravando;
+
+        el("invLimpar").disabled =
+            finalizado || gravando;
+
+        el("invAtualizar").disabled =
+            finalizado || gravando;
 
         [
             "invResponsavel",
             "invData",
             "invIdentificacao"
         ].forEach(id => {
-            el(id).disabled = finalizado || gravando;
+            el(id).disabled =
+                finalizado || gravando;
         });
     }
+
+
+
 
     /* ======================================================
        GERAR REGISTRO
@@ -1229,6 +1378,7 @@
             el("invResponsavel").value.trim();
 
         const data = el("invData").value;
+
         const identificacao =
             el("invIdentificacao").value.trim();
 
@@ -1239,7 +1389,9 @@
         }
 
         const linhas = referencia.modelos.map(item => {
-            const registro = contagens[item.modelo] || {};
+            const registro =
+                contagens[chave(item)] || {};
+
             const valor = registro.fisico;
 
             if (
@@ -1248,7 +1400,7 @@
                 valor === ""
             ) {
                 throw new Error(
-                    "Existem modelos pendentes de contagem."
+                    `Ainda falta contar ${item.modelo} em ${nomeLocal(item.setor)}.`
                 );
             }
 
@@ -1263,6 +1415,7 @@
 
             return {
                 modelo: item.modelo,
+                setor: item.setor,
                 sistema: item.sistema,
                 fisico,
                 diferenca,
@@ -1275,20 +1428,31 @@
 
         return {
             id: idEnvio || novoId(),
+
             data_inventario: data,
+
             responsavel,
+
             identificacao,
+
             total_sistema: linhas.reduce(
-                (s, x) => s + x.sistema, 0
+                (s, x) => s + x.sistema,
+                0
             ),
+
             total_fisico: linhas.reduce(
-                (s, x) => s + x.fisico, 0
+                (s, x) => s + x.fisico,
+                0
             ),
+
             modelos_contados: linhas.length,
+
             divergencias: linhas.filter(
                 x => x.diferenca !== 0
             ).length,
+
             registros: linhas,
+
             revisao_estoque: referencia.revisao
         };
     }
@@ -1304,12 +1468,15 @@
             const registro = gerarRegistro();
 
             gravando = true;
+
             renderizar();
             esconderMensagem();
 
             const user = await usuario();
 
-            // Confere se o estoque permaneceu inalterado.
+            // Confere se o estoque permaneceu
+            // inalterado durante a contagem.
+
             const atual = await consultarEstoque();
 
             if (
@@ -1335,6 +1502,7 @@
 
             if (!idEnvio) {
                 idEnvio = registro.id;
+
                 salvarRascunho();
             }
 
@@ -1349,10 +1517,14 @@
                 .insert(payload);
 
             if (error) {
-                // A mesma identificação pode ter sido
-                // gravada numa tentativa anterior.
-                const { data: existente, error: consultaErro } =
-                    await cliente()
+
+                // Verifica se o mesmo inventário
+                // já foi registrado anteriormente.
+
+                const {
+                    data: existente,
+                    error: consultaErro
+                } = await cliente()
                     .from(TABELA)
                     .select("id")
                     .eq("id", idEnvio)
@@ -1364,11 +1536,13 @@
             }
 
             finalizado = true;
+
             limparRascunho();
 
             mensagem(
                 "Inventário registrado no Supabase com sucesso. " +
-                "Nenhum saldo foi alterado. Confira os ajustes antes de aprovar."
+                "Nenhum saldo foi alterado. " +
+                "Confira as divergências por local antes de aprovar."
             );
 
             mostrarAprovacao(payload);
@@ -1376,6 +1550,7 @@
             await carregarHistorico();
 
         } catch (erro) {
+
             mensagem(
                 "Não foi possível confirmar o salvamento: " +
                 erro.message +
@@ -1386,13 +1561,18 @@
             salvarRascunho();
 
         } finally {
+
             gravando = false;
+
             renderizar();
         }
     }
 
+
+
     /* ======================================================
-       APROVAÇÃO DOS AJUSTES (EXECUÇÃO ATÔMICA NO SUPABASE)
+       APROVAÇÃO DOS AJUSTES
+       EXECUÇÃO ATÔMICA NO SUPABASE
        ====================================================== */
 
     let pendenteAprovacao = null;
@@ -1400,102 +1580,137 @@
     function mostrarAprovacao(inventario) {
         const painel = el("invPainelAprovacao");
         const corpo = el("invTabelaAprovacao");
+
         painel.hidden = true;
         corpo.replaceChildren();
+
         pendenteAprovacao = null;
 
         if (inventario.aprovado_em) {
-            mensagem("Este inventário já está aprovado.");
-            return;
-        }
-        if (!inventario.revisao_estoque) {
-            mensagem("Este inventário antigo não tem revisão do estoque. Faça uma nova contagem para aprová-lo.", true);
+            mensagem(
+                "Este inventário já está aprovado."
+            );
             return;
         }
 
-        const divergentes = (inventario.registros || []).filter(
-            item => item.diferenca !== 0
-        );
+        if (!inventario.revisao_estoque) {
+            mensagem(
+                "Este inventário antigo não tem revisão " +
+                "do estoque. Faça uma nova contagem " +
+                "para aprová-lo.",
+                true
+            );
+            return;
+        }
+
+        if (
+            !(inventario.registros || []).every(
+                item => LOCAIS.includes(item.setor)
+            )
+        ) {
+            mensagem(
+                "Este inventário foi feito no formato antigo, " +
+                "sem separação por local. Faça uma nova " +
+                "contagem para aprovar com segurança.",
+                true
+            );
+            return;
+        }
+
+        const divergentes =
+            (inventario.registros || []).filter(
+                item => item.diferenca !== 0
+            );
+
         pendenteAprovacao = inventario;
 
         divergentes.forEach(item => {
             const tr = document.createElement("tr");
+
             const modelo = document.createElement("td");
             modelo.textContent = item.modelo;
+
+            const local = document.createElement("td");
+            local.textContent = nomeLocal(item.setor);
+
             const diferenca = document.createElement("td");
-            diferenca.textContent = item.diferenca > 0
-                ? "+" + item.diferenca : String(item.diferenca);
-            const principal = document.createElement("input");
-            principal.type = "number";
-            principal.step = "1";
-            principal.value = "0";
-            principal.dataset.modelo = item.modelo;
-            principal.className = "inv-ajuste-principal inv-quantidade";
-            const showroom = document.createElement("input");
-            showroom.type = "number";
-            showroom.step = "1";
-            showroom.value = String(item.diferenca);
-            showroom.dataset.modelo = item.modelo;
-            showroom.className = "inv-ajuste-showroom inv-quantidade";
-            const c1 = document.createElement("td");
-            const c2 = document.createElement("td");
-            c1.append(principal);
-            c2.append(showroom);
-            tr.append(modelo, diferenca, c1, c2);
+
+            diferenca.textContent =
+                item.diferenca > 0
+                    ? "+" + item.diferenca
+                    : String(item.diferenca);
+
+            tr.append(
+                modelo,
+                local,
+                diferenca
+            );
+
             corpo.append(tr);
         });
 
         painel.hidden = false;
-        painel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        painel.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
     }
+
+    /* ======================================================
+       APROVAR E ATUALIZAR OS ESTOQUES
+       ====================================================== */
 
     async function aprovarAjustes() {
         const inv = pendenteAprovacao;
+
         if (!inv || gravando) return;
 
-        const ajustes = [];
-        for (const item of inv.registros.filter(x => x.diferenca !== 0)) {
-            const inputs = [...el("invTabelaAprovacao").querySelectorAll("input")];
-            const principalInput = inputs.find(x =>
-                x.classList.contains("inv-ajuste-principal") && x.dataset.modelo === item.modelo
-            );
-            const showroomInput = inputs.find(x =>
-                x.classList.contains("inv-ajuste-showroom") && x.dataset.modelo === item.modelo
-            );
-            const principal = Number(principalInput?.value);
-            const showroom = Number(showroomInput?.value);
-            if (!principalInput?.value.trim() || !showroomInput?.value.trim() ||
-                !Number.isSafeInteger(principal) || !Number.isSafeInteger(showroom) ||
-                principal + showroom !== item.diferenca) {
-                mensagem("Confira os ajustes do modelo " + item.modelo +
-                    ": a soma dos dois locais deve ser " + item.diferenca + ".", true);
-                return;
-            }
-            ajustes.push({ modelo: item.modelo, principal, showroom });
-        }
-
-        if (!window.confirm(
+        const confirmar = window.confirm(
             "APROVAR e ALTERAR o Estoque Principal/Show Room?\n\n" +
-            "Esta ação não poderá ser repetida. Confira as quantidades por local."
-        )) return;
+            "Os ajustes serão feitos conforme a contagem de cada local."
+        );
+
+        if (!confirmar) return;
 
         gravando = true;
+
         el("invAprovar").disabled = true;
+
         try {
-            const { error } = await cliente().rpc("maquinas_aprovar_inventario", {
-                p_inventario: inv.id,
-                p_ajustes: ajustes
-            });
+            const { error } = await cliente().rpc(
+                "maquinas_aprovar_inventario_por_local",
+                {
+                    p_inventario: inv.id
+                }
+            );
+
             if (error) throw error;
+
             pendenteAprovacao = null;
+
             el("invPainelAprovacao").hidden = true;
-            mensagem("Inventário aprovado. Ajustes aplicados ao estoque na nuvem. Atualize a tela do Estoque para conferir.");
+
+            mensagem(
+                "Inventário aprovado. " +
+                "Ajustes aplicados ao estoque na nuvem. " +
+                "Atualize a tela do Estoque para conferir."
+            );
+
             await carregarHistorico();
+
         } catch (erro) {
-            mensagem("Não foi possível confirmar a aprovação: " + erro.message +
-                ". Confira o inventário e os saldos na nuvem antes de repetir.", true);
+            mensagem(
+                "Não foi possível confirmar a aprovação: " +
+                erro.message +
+                ". Confira o inventário e os saldos " +
+                "na nuvem antes de repetir.",
+                true
+            );
+
         } finally {
             gravando = false;
+
             el("invAprovar").disabled = false;
         }
     }
@@ -1527,6 +1742,7 @@
             if (error) throw error;
 
             historico = data || [];
+
             renderizarHistorico();
 
         } catch (erro) {
@@ -1541,8 +1757,13 @@
         }
     }
 
+    /* ======================================================
+       MOSTRAR HISTÓRICO NA TABELA
+       ====================================================== */
+
     function renderizarHistorico() {
         const corpo = el("invTabelaHistorico");
+
         corpo.replaceChildren();
 
         if (!historico.length) {
@@ -1550,11 +1771,13 @@
             const celula = document.createElement("td");
 
             celula.colSpan = 6;
+
             celula.textContent =
                 "Nenhum inventário encontrado no Supabase.";
 
             linha.append(celula);
             corpo.append(linha);
+
             return;
         }
 
@@ -1569,11 +1792,14 @@
                 item.divergencias
             ].forEach(valor => {
                 const td = document.createElement("td");
+
                 td.textContent = String(valor ?? "");
+
                 linha.append(td);
             });
 
             const acoes = document.createElement("td");
+
             const botao = document.createElement("button");
 
             botao.type = "button";
@@ -1585,28 +1811,43 @@
             });
 
             acoes.append(botao);
+
             if (!item.aprovado_em) {
                 const aprovar = document.createElement("button");
+
                 aprovar.type = "button";
                 aprovar.className = "inv-mini-btn";
-                aprovar.textContent = "Conferir ajustes";
+                aprovar.textContent = "Conferir por local";
+
                 aprovar.addEventListener("click", async () => {
                     try {
                         const { data, error } = await cliente()
-                            .from(TABELA).select("*")
-                            .eq("id", item.id).single();
+                            .from(TABELA)
+                            .select("*")
+                            .eq("id", item.id)
+                            .single();
+
                         if (error) throw error;
+
                         mostrarAprovacao(data);
+
                     } catch (erro) {
-                        mensagem(erro.message, true);
+                        mensagem(
+                            erro.message,
+                            true
+                        );
                     }
                 });
+
                 acoes.append(aprovar);
             }
+
             linha.append(acoes);
             corpo.append(linha);
         });
     }
+
+
 
     /* ======================================================
        VISUALIZAR INVENTÁRIO ANTERIOR
@@ -1636,11 +1877,13 @@
             painel.replaceChildren();
 
             const titulo = document.createElement("h3");
+
             titulo.textContent =
                 "Inventário de " +
                 formatarData(data.data_inventario);
 
             const resumo = document.createElement("p");
+
             resumo.textContent =
                 "Responsável: " + data.responsavel +
                 " | Total sistema: " + data.total_sistema +
@@ -1654,6 +1897,7 @@
 
             [
                 "Modelo",
+                "Local",
                 "Sistema",
                 "Físico",
                 "Diferença",
@@ -1661,6 +1905,7 @@
                 "Observações"
             ].forEach(nome => {
                 const th = document.createElement("th");
+
                 th.textContent = nome;
                 cabecalho.append(th);
             });
@@ -1675,6 +1920,9 @@
 
                 [
                     item.modelo,
+                    item.setor
+                        ? nomeLocal(item.setor)
+                        : "Inventário antigo",
                     item.sistema,
                     item.fisico,
                     item.diferenca,
@@ -1682,6 +1930,7 @@
                     item.observacao || ""
                 ].forEach(valor => {
                     const td = document.createElement("td");
+
                     td.textContent = String(valor ?? "");
                     tr.append(td);
                 });
@@ -1701,7 +1950,12 @@
                 painel.replaceChildren();
             });
 
-            painel.append(titulo, resumo, tabela, fechar);
+            painel.append(
+                titulo,
+                resumo,
+                tabela,
+                fechar
+            );
 
             painel.scrollIntoView({
                 behavior: "smooth",
@@ -1726,7 +1980,9 @@
             if (!window.confirm(
                 "Iniciar uma nova contagem e descartar " +
                 "o rascunho atual?"
-            )) return;
+            )) {
+                return;
+            }
         }
 
         try {
@@ -1734,9 +1990,11 @@
                 await consultarEstoque();
 
             referencia = novaReferencia;
+
             contagens = {};
             finalizado = false;
             idEnvio = null;
+
             el("invPainelAprovacao").hidden = true;
 
             limparRascunho();
@@ -1746,6 +2004,7 @@
             el("invData").value = hoje();
             el("invBusca").value = "";
             el("invFiltro").value = "todos";
+            el("invLocal").value = "estoque";
 
             esconderMensagem();
             renderizar();
@@ -1753,42 +2012,66 @@
             mensagem("Nova contagem iniciada.");
 
         } catch (erro) {
-            mensagem(erro.message, true);
+            mensagem(
+                erro.message,
+                true
+            );
         }
     }
+
+    /* ======================================================
+       ATUALIZAR SALDOS DOS DEPÓSITOS
+       ====================================================== */
 
     async function atualizarSaldos() {
         if (gravando || finalizado) return;
 
-        if (temContagem() && !window.confirm(
-            "Atualizar os saldos pode alterar as divergências. " +
-            "Deseja continuar?"
-        )) return;
+        if (
+            temContagem() &&
+            !window.confirm(
+                "Atualizar os saldos pode alterar as divergências. " +
+                "Deseja continuar?"
+            )
+        ) {
+            return;
+        }
 
         try {
             await carregarReferencia();
 
             mensagem(
-                "Saldos consolidados atualizados."
+                "Saldos dos dois locais atualizados."
             );
 
         } catch (erro) {
-            mensagem(erro.message, true);
+            mensagem(
+                erro.message,
+                true
+            );
         }
     }
+
+    /* ======================================================
+       LIMPAR CONTAGEM
+       ====================================================== */
 
     function limparContagem() {
         if (gravando || finalizado) return;
 
         if (!window.confirm(
             "Limpar todas as quantidades informadas?"
-        )) return;
+        )) {
+            return;
+        }
 
         contagens = {};
         idEnvio = null;
+
         salvarRascunho();
         renderizar();
     }
+
+
 
     /* ======================================================
        EXPORTAR CSV
@@ -1804,6 +2087,7 @@
 
             const cabecalho = [
                 "Modelo",
+                "Local",
                 "Sistema",
                 "Físico",
                 "Diferença",
@@ -1812,7 +2096,8 @@
             ];
 
             const linhas = referencia.modelos.map(item => {
-                const registro = contagens[item.modelo] || {};
+                const registro =
+                    contagens[chave(item)] || {};
 
                 const informado =
                     registro.fisico !== undefined &&
@@ -1824,14 +2109,18 @@
 
                 return [
                     item.modelo,
+                    nomeLocal(item.setor),
                     item.sistema,
                     fisico,
+
                     informado
                         ? fisico - item.sistema
                         : "",
+
                     informado
                         ? estadoContagem(item)
                         : "Pendente",
+
                     registro.observacao || ""
                 ];
             });
@@ -1856,19 +2145,24 @@
 
             const blob = new Blob(
                 ["\uFEFF", conteudo],
-                { type: "text/csv;charset=utf-8" }
+                {
+                    type: "text/csv;charset=utf-8"
+                }
             );
 
             const url = URL.createObjectURL(blob);
+
             const link = document.createElement("a");
 
             link.href = url;
+
             link.download =
                 "SMI_Inventario_Geral_" +
                 (el("invData").value || hoje()) +
                 ".csv";
 
             document.body.append(link);
+
             link.click();
             link.remove();
 
@@ -1878,7 +2172,10 @@
             );
 
         } catch (erro) {
-            mensagem(erro.message, true);
+            mensagem(
+                erro.message,
+                true
+            );
         }
     }
 
@@ -1905,38 +2202,81 @@
        ====================================================== */
 
     function configurarEventos() {
-        el("invAprovar").addEventListener("click", aprovarAjustes);
-        el("invAtualizar").addEventListener(
-            "click", atualizarSaldos
+
+        // Alternar entre Estoque Principal e Show Room.
+
+        el("invLocal").addEventListener(
+            "change",
+            () => {
+                renderizar();
+                salvarRascunho();
+            }
         );
+
+        // Aprovação do inventário.
+
+        el("invAprovar").addEventListener(
+            "click",
+            aprovarAjustes
+        );
+
+        // Atualização de saldos.
+
+        el("invAtualizar").addEventListener(
+            "click",
+            atualizarSaldos
+        );
+
+        // Busca de modelos.
 
         el("invBusca").addEventListener(
-            "input", renderizarTabela
+            "input",
+            renderizarTabela
         );
+
+        // Filtros de contagem.
 
         el("invFiltro").addEventListener(
-            "change", renderizarTabela
+            "change",
+            renderizarTabela
         );
+
+        // Finalizar inventário.
 
         el("invSalvar").addEventListener(
-            "click", finalizar
+            "click",
+            finalizar
         );
+
+        // Nova contagem.
 
         el("invNovaContagem").addEventListener(
-            "click", novaContagem
+            "click",
+            novaContagem
         );
+
+        // Limpar contagem.
 
         el("invLimpar").addEventListener(
-            "click", limparContagem
+            "click",
+            limparContagem
         );
+
+        // Exportar CSV.
 
         el("invExportar").addEventListener(
-            "click", exportarCSV
+            "click",
+            exportarCSV
         );
 
+        // Imprimir inventário.
+
         el("invImprimir").addEventListener(
-            "click", imprimir
+            "click",
+            imprimir
         );
+
+        // Salvar automaticamente os dados da contagem.
 
         [
             "invResponsavel",
@@ -1944,14 +2284,22 @@
             "invIdentificacao"
         ].forEach(id => {
             el(id).addEventListener(
-                "input", salvarRascunho
+                "input",
+                salvarRascunho
             );
         });
+
+        // Fechar o inventário ao navegar para outra tela.
 
         document.querySelectorAll(
             ".sidebar .menu-item"
         ).forEach(botao => {
-            if (botao.id === "btnInventarioSMI") return;
+
+            if (
+                botao.id === "btnInventarioSMI"
+            ) {
+                return;
+            }
 
             botao.addEventListener(
                 "click",
@@ -1967,8 +2315,11 @@
 
     function iniciar() {
         criarEstilos();
+
         criarTela();
+
         criarMenu();
+
         configurarEventos();
 
         console.log(
@@ -1977,11 +2328,16 @@
     }
 
     if (document.readyState === "loading") {
+
         document.addEventListener(
-            "DOMContentLoaded", iniciar
+            "DOMContentLoaded",
+            iniciar
         );
+
     } else {
+
         iniciar();
+
     }
 
 })();
