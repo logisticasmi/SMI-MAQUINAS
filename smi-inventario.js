@@ -1,4 +1,3 @@
-
 /* ==========================================================
    SMI MÁQUINAS — INVENTÁRIO GERAL
    Integração Supabase — 2026
@@ -29,7 +28,8 @@
 
     let referencia = null;
     let contagens = {};
-    let historico = [];
+       let historico = [];
+    let ultimoInventario = null;
     let finalizado = false;
     let gravando = false;
     let inventarioAberto = false;
@@ -289,7 +289,6 @@
         );
     }
 
-
     /* ======================================================
        CRIAR ESTILOS
        ====================================================== */
@@ -370,7 +369,7 @@
                 color: #168b57;
             }
 
-            .inv-card.amarelo strong {
+                        .inv-card.amarelo strong {
                 color: #bc8312;
             }
 
@@ -381,6 +380,438 @@
             .inv-painel {
                 padding: 21px;
                 margin-bottom: 19px;
+            }
+
+            /* ==========================================
+               NOVOS GRÁFICOS DO INVENTÁRIO
+               ========================================== */
+
+            .inv-graficos {
+                display: grid;
+                gap: 14px;
+                margin-bottom: 20px;
+            }
+
+            .inv-grafico {
+                background: #fff;
+                border: 1px solid #dfe7f0;
+                border-radius: 14px;
+                padding: 0;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .inv-grafico-cabecalho {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                flex-wrap: wrap;
+                padding: 13px 17px;
+                color: white;
+                background: #1769e8;
+            }
+
+            .inv-grafico-acessorios
+            .inv-grafico-cabecalho {
+                background: #18a8db;
+            }
+
+            .inv-grafico-cabecalho h3 {
+                margin: 0;
+                font-size: 17px;
+                color: white;
+                flex: 1 1 260px;
+            }
+
+            .inv-grafico-resumo {
+                display: flex;
+                align-items: center;
+                gap: 24px;
+            }
+
+            .inv-grafico-metrica {
+                display: flex;
+                flex-direction: column;
+                min-width: 90px;
+            }
+
+            .inv-grafico-metrica small {
+                color: #ffffff !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                opacity: 1 !important;
+                white-space: nowrap;
+                line-height: 1.5;
+            }
+
+            .inv-grafico-metrica strong {
+                color: #ffffff !important;
+                font-size: 22px !important;
+                font-weight: 800 !important;
+                line-height: 1.3;
+            }
+
+            .inv-grafico-filtro {
+                border: 0;
+                border-radius: 8px;
+                background: #fff;
+                color: #183b68;
+                font-weight: 700;
+                padding: 8px 10px;
+                max-width: 175px;
+            }
+
+            .inv-grafico-rolagem {
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 10px 16px 8px 44px;
+                position: relative;
+            }
+
+            .inv-grafico-area {
+                display: flex;
+                align-items: end;
+                gap: 9px;
+                height: 190px;
+                min-width: 100%;
+                width: max-content;
+                padding: 20px 8px 0;
+                border-bottom: 1px solid #c9d5e4;
+                box-sizing: border-box;
+
+                background-image:
+                    repeating-linear-gradient(
+                        to top,
+                        transparent 0,
+                        transparent calc(25% - 1px),
+                        #e3eaf3 calc(25% - 1px),
+                        #e3eaf3 25%
+                    );
+            }
+
+            .inv-grafico-item {
+                width: 57px;
+                flex: 0 0 57px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: end;
+                height: 100%;
+            }
+
+            .inv-grafico-numero {
+                font-size: 12px;
+                font-weight: 700;
+                color: #172840;
+                margin-bottom: 4px;
+            }
+
+            .inv-grafico-coluna {
+                width: 27px;
+                border-radius: 3px 3px 0 0;
+                min-height: 2px;
+            }
+
+            .inv-grafico-rotulos {
+                display: flex;
+                gap: 9px;
+                min-width: 100%;
+                width: max-content;
+                padding: 0 8px;
+                box-sizing: border-box;
+            }
+
+            .inv-grafico-rotulo {
+                width: 57px;
+                flex: 0 0 57px;
+                height: 80px;
+                position: relative;
+            }
+
+            .inv-grafico-rotulo span {
+                position: absolute;
+                top: 7px;
+                left: 28px;
+                transform: rotate(45deg);
+                transform-origin: left top;
+                width: 95px;
+                font-size: 11px;
+                color: #263954;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .inv-grafico-vazio {
+                color: #64758d;
+                padding: 18px 0;
+            }
+
+            /* ==========================================
+               OPÇÃO 1 — NOVO VISUAL DOS CARDS
+               ========================================== */
+
+            .inv-card {
+                border-top: 3px solid #1769e8;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 16px 18px;
+                min-height: 90px;
+                box-shadow: 0 2px 5px rgba(19,45,81,.05);
+            }
+
+            .inv-card.verde {
+                border-top-color: #149c54;
+            }
+
+            .inv-card.amarelo {
+                border-top-color: #ed9a17;
+            }
+
+            .inv-card.vermelho {
+                border-top-color: #e33a49;
+            }
+
+            .inv-card-icone {
+                width: 48px;
+                height: 48px;
+                flex: 0 0 48px;
+                display: grid;
+                place-items: center;
+                border-radius: 10px;
+                color: #1769e8;
+                background: #edf4ff;
+                font-size: 25px;
+            }
+
+            .inv-card.verde .inv-card-icone {
+                color: #148b51;
+                background: #e9f8ef;
+            }
+
+            .inv-card.amarelo .inv-card-icone {
+                color: #d48b11;
+                background: #fff4e5;
+            }
+
+            .inv-card.vermelho .inv-card-icone {
+                color: #d73548;
+                background: #fff0f1;
+            }
+
+            .inv-card-info {
+                min-width: 0;
+            }
+
+            .inv-card strong {
+                margin-top: 2px;
+            }
+
+            /* ==========================================
+               BARRA DE PROGRESSO DO INVENTÁRIO
+               ========================================== */
+
+            .inv-progresso {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                background: #f6f9ff;
+                border: 1px solid #cfddf5;
+                border-radius: 12px;
+                padding: 15px 19px;
+                margin-bottom: 28px;
+            }
+
+            .inv-progresso-conteudo {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .inv-progresso-titulo {
+                display: block;
+                color: #102c57;
+                font-weight: 800;
+                font-size: 17px;
+                margin-bottom: 8px;
+            }
+
+            .inv-progresso-trilho {
+                height: 14px;
+                border-radius: 30px;
+                background: #dbe5f3;
+                overflow: hidden;
+            }
+
+            .inv-progresso-preenchimento {
+                height: 100%;
+                width: 0%;
+                background: #1769e8;
+                border-radius: inherit;
+                transition: width .25s;
+            }
+
+            .inv-ultima-data {
+                color: #203b64;
+                font-size: 13px;
+                border-left: 1px solid #c4d4ec;
+                padding-left: 22px;
+                white-space: nowrap;
+            }
+
+            /* ==========================================
+               GRÁFICOS LADO A LADO
+               ========================================== */
+
+            .inv-graficos {
+                grid-template-columns:
+                    repeat(2, minmax(0,1fr));
+                gap: 16px;
+            }
+
+            .inv-grafico {
+                padding: 15px 14px 9px;
+                overflow: hidden;
+            }
+
+            .inv-grafico-cabecalho,
+            .inv-grafico-acessorios .inv-grafico-cabecalho {
+                background: #fff;
+                color: #172840;
+                padding: 0 0 12px;
+                gap: 10px;
+                flex-wrap: nowrap;
+                align-items: start;
+            }
+
+            .inv-grafico-cabecalho h3 {
+                color: #172840;
+                font-size: 16px;
+                flex: 1 1 auto;
+                min-width: 0;
+                padding: 7px 0 7px 12px;
+                border-left: 4px solid #1769e8;
+            }
+
+            .inv-grafico-acessorios
+            .inv-grafico-cabecalho h3 {
+                border-left-color: #18a8db;
+            }
+
+            .inv-grafico-resumo {
+                gap: 6px;
+                flex: 0 0 auto;
+            }
+
+            .inv-grafico-metrica {
+                background: #eef4fc;
+                border-radius: 8px;
+                padding: 5px 7px;
+                min-width: 65px;
+                text-align: center;
+            }
+
+            .inv-grafico-metrica small {
+                color: #28476e !important;
+                opacity: 1 !important;
+                font-size: 10px !important;
+                font-weight: 600;
+            }
+
+            .inv-grafico-metrica strong {
+                color: #0f4caa !important;
+                font-size: 18px !important;
+            }
+
+            .inv-grafico-filtro {
+                display: none;
+            }
+
+            .inv-grafico-area {
+                height: 205px;
+            }
+
+            .inv-grafico-coluna {
+                width: 29px;
+            }
+
+            .inv-local-global {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #29466c;
+                font-size: 12px;
+            }
+
+            .inv-local-global select {
+                border: 1px solid #d2dfef;
+                border-radius: 8px;
+                padding: 9px 12px;
+                background: white;
+                color: #152f55;
+                font-weight: 700;
+            }
+
+            .inv-grafico-item.inv-top3
+            .inv-grafico-coluna {
+                background: #0950ce !important;
+            }
+
+            .inv-grafico-acessorios
+            .inv-grafico-item.inv-top3
+            .inv-grafico-coluna {
+                background: #078caa !important;
+            }
+
+            @media(max-width: 1350px) {
+                .inv-graficos {
+                    grid-template-columns: 1fr;
+                }
+
+                .inv-grafico-cabecalho {
+                    flex-wrap: wrap !important;
+                }
+            }
+
+            @media(max-width: 800px) {
+                .inv-progresso {
+                    flex-wrap: wrap;
+                }
+
+                .inv-ultima-data {
+                    border-left: 0;
+                    padding-left: 0;
+                }
+            }
+
+            /* ==========================================
+               EIXOS DOS GRÁFICOS
+               ========================================== */
+
+            .inv-grafico-eixo {
+                position: absolute;
+                top: 30px;
+                left: 4px;
+                height: 170px;
+                width: 36px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                text-align: right;
+                color: #62748b;
+                font-size: 10px;
+            }
+
+            @media (max-width: 750px) {
+                .inv-grafico-resumo {
+                    width: 100%;
+                    justify-content: space-between;
+                    gap: 8px;
+                }
+
+                .inv-grafico-cabecalho {
+                    gap: 10px;
+                }
             }
 
             .inv-painel h3 {
@@ -509,7 +940,6 @@
                 padding: 5px 9px;
                 border-radius: 7px;
                 font-size: 10px;
-                font-weight: 800;
             }
 
             .inv-status.pendente {
@@ -539,7 +969,7 @@
                 font-size: 13px;
             }
 
-            .inv-sucesso {
+                        .inv-sucesso {
                 background: #e6f7ed;
                 color: #166c43;
             }
@@ -623,6 +1053,10 @@
                 body.smi-imprimindo-inventario
                 .inv-rodape-acoes,
                 body.smi-imprimindo-inventario
+                .inv-graficos,
+                body.smi-imprimindo-inventario
+                .inv-progresso,
+                body.smi-imprimindo-inventario
                 #invHistorico {
                     display: none !important;
                 }
@@ -652,8 +1086,6 @@
         document.head.appendChild(style);
     }
 
-
-
     /* ======================================================
        CRIAR INTERFACE
        ====================================================== */
@@ -681,6 +1113,28 @@
                 </div>
 
                 <div class="inv-acoes">
+                    <label class="inv-local-global">
+                        Local:
+
+                        <select
+                            id="invLocalGraficos"
+                            aria-label="Filtrar gráficos por local">
+
+                            <option value="todos">
+                                Todos os locais
+                            </option>
+
+                            <option value="estoque">
+                                Estoque Principal
+                            </option>
+
+                            <option value="showroom">
+                                Show Room
+                            </option>
+
+                        </select>
+                    </label>
+
                     <button type="button"
                         id="invAtualizar"
                         class="btn btn-secundario">
@@ -695,27 +1149,190 @@
                 </div>
             </div>
 
+            <!-- ==========================================
+                 CARDS DO INVENTÁRIO
+                 ========================================== -->
+
             <div class="inv-cards">
+
                 <div class="inv-card">
-                    <span>Total no sistema</span>
-                    <strong id="invTotalSistema">0</strong>
+                    <div class="inv-card-icone"
+                        aria-hidden="true">
+                        ▤
+                    </div>
+
+                    <div class="inv-card-info">
+                        <span>Total no sistema</span>
+                        <strong id="invTotalSistema">0</strong>
+                    </div>
                 </div>
 
                 <div class="inv-card verde">
-                    <span>Modelos contados</span>
-                    <strong id="invContados">0</strong>
+                    <div class="inv-card-icone"
+                        aria-hidden="true">
+                        ⬡
+                    </div>
+
+                    <div class="inv-card-info">
+                        <span>Modelos contados</span>
+                        <strong id="invContados">0</strong>
+                    </div>
                 </div>
 
                 <div class="inv-card amarelo">
-                    <span>Pendentes</span>
-                    <strong id="invPendentes">0</strong>
+                    <div class="inv-card-icone"
+                        aria-hidden="true">
+                        ◷
+                    </div>
+
+                    <div class="inv-card-info">
+                        <span>Pendentes</span>
+                        <strong id="invPendentes">0</strong>
+                    </div>
                 </div>
 
                 <div class="inv-card vermelho">
-                    <span>Divergências</span>
-                    <strong id="invDivergencias">0</strong>
+                    <div class="inv-card-icone"
+                        aria-hidden="true">
+                        ⚠
+                    </div>
+
+                    <div class="inv-card-info">
+                        <span>Divergências</span>
+                        <strong id="invDivergencias">0</strong>
+                    </div>
                 </div>
+
             </div>
+
+            <!-- ==========================================
+                 PROGRESSO DA CONTAGEM
+                 ========================================== -->
+
+            <div class="inv-progresso"
+                aria-label="Progresso da contagem">
+
+                <div class="inv-progresso-conteudo">
+
+                    <span class="inv-progresso-titulo"
+                        id="invTextoProgresso">
+                        0 de 0 modelos contados
+                    </span>
+
+                    <div class="inv-progresso-trilho">
+                        <div
+                            class="inv-progresso-preenchimento"
+                            id="invBarraProgresso">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="inv-ultima-data">
+                    ▣ Último inventário:
+                    <strong id="invUltimaData">—</strong>
+                </div>
+
+            </div>
+
+            <!-- ==========================================
+                 GRÁFICOS DO INVENTÁRIO
+                 ========================================== -->
+
+            <div class="inv-graficos"
+                aria-label="Gráficos de saldo por modelo">
+
+                <!-- GRÁFICO DE MÁQUINAS -->
+
+                <div class="inv-grafico inv-grafico-maquinas">
+
+                    <div class="inv-grafico-cabecalho">
+
+                        <h3>
+                            Quantidade de máquinas por modelo
+                        </h3>
+
+                        <div
+                            class="inv-grafico-resumo"
+                            id="invResumoMaquinas">
+                        </div>
+
+                        <select
+                            class="inv-grafico-filtro"
+                            id="invFiltroGraficoMaquinas"
+                            aria-label="Filtrar gráfico de máquinas por local">
+
+                            <option value="todos">
+                                Todos os locais
+                            </option>
+
+                            <option value="estoque">
+                                Estoque Principal
+                            </option>
+
+                            <option value="showroom">
+                                Show Room
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div
+                        id="invGraficoMaquinas"
+                        class="inv-grafico-rolagem">
+                    </div>
+
+                </div>
+
+                <!-- GRÁFICO DE ACESSÓRIOS -->
+
+                <div class="inv-grafico inv-grafico-acessorios">
+
+                    <div class="inv-grafico-cabecalho">
+
+                        <h3>
+                            Quantidade de acessórios por modelo
+                        </h3>
+
+                        <div
+                            class="inv-grafico-resumo"
+                            id="invResumoAcessorios">
+                        </div>
+
+                        <select
+                            class="inv-grafico-filtro"
+                            id="invFiltroGraficoAcessorios"
+                            aria-label="Filtrar gráfico de acessórios por local">
+
+                            <option value="todos">
+                                Todos os locais
+                            </option>
+
+                            <option value="estoque">
+                                Estoque Principal
+                            </option>
+
+                            <option value="showroom">
+                                Show Room
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div
+                        id="invGraficoAcessorios"
+                        class="inv-grafico-rolagem">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ==========================================
+                 INFORMAÇÕES DA CONTAGEM
+                 ========================================== -->
 
             <div class="inv-painel">
                 <h3>Informações da contagem</h3>
@@ -756,6 +1373,10 @@
                 </p>
             </div>
 
+            <!-- ==========================================
+                 CONTAGEM FÍSICA
+                 ========================================== -->
+
             <div class="inv-painel">
                 <h3>Contagem física</h3>
 
@@ -775,6 +1396,7 @@
                         border:1px solid #cbd9ea;
                         border-radius:8px;
                     ">
+
                         <option value="estoque">
                             Estoque Principal
                         </option>
@@ -782,6 +1404,7 @@
                         <option value="showroom">
                             Show Room
                         </option>
+
                     </select>
                 </label>
 
@@ -846,16 +1469,16 @@
                     </button>
 
                     <button type="button"
-                        id="invExportar"
-                        class="btn btn-secundario">
-                        Exportar CSV
-                    </button>
+    id="invExportar"
+    class="btn btn-secundario">
+    Exportar CSV
+</button>
 
-                    <button type="button"
-                        id="invSalvar"
-                        class="btn btn-primario">
-                        Finalizar inventário
-                    </button>
+<button type="button"
+    id="invSalvar"
+    class="btn btn-primario">
+    Finalizar inventário
+</button>
                 </div>
 
                 <p id="invMensagem"
@@ -1075,8 +1698,6 @@
         botao.removeAttribute("aria-current");
     }
 
-
-
     /* ======================================================
        CONTAGENS
        ====================================================== */
@@ -1097,6 +1718,10 @@
             ? "conferido"
             : "divergente";
     }
+
+    /* ======================================================
+       ATUALIZAR INDICADORES
+       ====================================================== */
 
     function atualizarIndicadores() {
         if (!referencia) return;
@@ -1131,7 +1756,294 @@
             modelos.length - contados;
 
         el("invDivergencias").textContent = divergencias;
+
+        /* ==============================================
+           BARRA DE PROGRESSO
+           ============================================== */
+
+        const titulo = el("invTextoProgresso");
+        const barra = el("invBarraProgresso");
+
+        if (titulo) {
+            titulo.textContent =
+                `${contados} de ${modelos.length} modelos contados`;
+        }
+
+        if (barra) {
+            const percentual = modelos.length
+                ? (contados / modelos.length) * 100
+                : 0;
+
+            barra.style.width = `${percentual}%`;
+        }
     }
+
+    /* ======================================================
+       GRÁFICOS DO INVENTÁRIO
+       ====================================================== */
+
+    // Painel somente leitura.
+    // Utiliza os saldos consolidados dos dois locais.
+    // Contagens não aprovadas não substituem o saldo oficial.
+
+    function renderizarGraficos() {
+        if (!referencia?.modelos) return;
+
+        const tipos = new Map();
+
+        if (
+            typeof dados !== "undefined" &&
+            Array.isArray(dados?.catalogoImportado)
+        ) {
+            dados.catalogoImportado.forEach(item => {
+                if (item?.modelo) {
+                    tipos.set(item.modelo, item.tipo);
+                }
+            });
+        }
+
+        /* ==================================================
+           CONSULTAR SALDOS DOS GRÁFICOS
+           ================================================== */
+
+                function itensDoGrafico(tipoDesejado, filtroId) {
+            const filtro = el(filtroId)?.value || "todos";
+            const totais = new Map();
+
+            // Os gráficos utilizam somente o último
+            // inventário finalizado e salvo no Supabase.
+
+            const registros = ultimoInventario?.registros || [];
+
+            registros.forEach(item => {
+                const setor = item.setor === "showroom"
+                    ? "showroom"
+                    : "estoque";
+
+                if (filtro !== "todos" && setor !== filtro) {
+                    return;
+                }
+
+                const modelo = String(item.modelo || "").trim();
+                const quantidade = Number(item.fisico);
+
+                if (
+                    !modelo ||
+                    !Number.isFinite(quantidade) ||
+                    quantidade <= 0
+                ) {
+                    return;
+                }
+
+                totais.set(
+                    modelo,
+                    (totais.get(modelo) || 0) + quantidade
+                );
+            });
+
+            return [...totais.entries()]
+                .filter(([modelo]) => {
+                    const tipo = tipos.get(modelo) ||
+                        (
+                            /^(MY\d|ESTEIRA|CARRINHO)/i.test(modelo)
+                                ? "acessorio"
+                                : "maquina"
+                        );
+
+                    return tipo === tipoDesejado;
+                })
+                .map(([modelo, quantidade]) => ({
+                    modelo,
+                    quantidade
+                }))
+                .sort(
+                    (a, b) =>
+                        b.quantidade - a.quantidade ||
+                        a.modelo.localeCompare(b.modelo)
+                );
+        }
+        /* ==================================================
+           MONTAGEM DOS GRÁFICOS
+           ================================================== */
+
+        const montar = (id, resumoId, itens, cor) => {
+            const destino = el(id);
+
+            if (!destino) return;
+
+            destino.replaceChildren();
+
+            const resumo = el(resumoId);
+
+            if (resumo) {
+                resumo.replaceChildren();
+
+                const metricas = [
+                    [
+                        "Unidades",
+                        itens.reduce(
+                            (soma, item) =>
+                                soma + item.quantidade,
+                            0
+                        )
+                    ],
+                    [
+                        "Modelos ativos",
+                        itens.length
+                    ],
+                    [
+                        "Maior estoque",
+                        itens.length
+                            ? Math.max(
+                                ...itens.map(
+                                    item => item.quantidade
+                                )
+                            )
+                            : 0
+                    ]
+                ];
+
+                metricas.forEach(([titulo, valor]) => {
+                    const campo =
+                        document.createElement("div");
+
+                    campo.className =
+                        "inv-grafico-metrica";
+
+                    const nome =
+                        document.createElement("small");
+
+                    nome.textContent = titulo;
+
+                    const numero =
+                        document.createElement("strong");
+
+                    numero.textContent = valor;
+
+                    campo.append(nome, numero);
+                    resumo.append(campo);
+                });
+            }
+
+            if (!itens.length) {
+                const vazio =
+                    document.createElement("p");
+
+                vazio.className =
+                    "inv-grafico-vazio";
+
+                vazio.textContent =
+                    "Nenhum item com saldo positivo.";
+
+                destino.append(vazio);
+                return;
+            }
+
+            // Ordenação do maior para o menor.
+
+            itens.sort(
+                (a, b) =>
+                    b.quantidade - a.quantidade ||
+                    a.modelo.localeCompare(b.modelo)
+            );
+
+                        const maximo = Math.max(
+                ...itens.map(item => item.quantidade)
+            );
+
+            const area = document.createElement("div");
+            area.className = "inv-grafico-area";
+
+            // Eixo vertical com escala de quantidades.
+
+            const eixo = document.createElement("div");
+            eixo.className = "inv-grafico-eixo";
+
+            for (let i = 4; i >= 0; i--) {
+                const marca = document.createElement("span");
+
+                marca.textContent = Math.round(
+                    maximo * i / 4
+                );
+
+                eixo.append(marca);
+            }
+
+            const rotulos = document.createElement("div");
+            rotulos.className = "inv-grafico-rotulos";
+
+            // Cria uma coluna para cada modelo.
+
+            itens.forEach(({ modelo, quantidade }, indice) => {
+                const item = document.createElement("div");
+                item.className = "inv-grafico-item" + (indice < 3 ? " inv-top3" : "");
+                item.title = `${modelo}: ${quantidade}`;
+
+                // Número acima da coluna.
+
+                const numero = document.createElement("span");
+                numero.className = "inv-grafico-numero";
+                numero.textContent = quantidade;
+
+                // Coluna com altura proporcional.
+
+                const coluna = document.createElement("div");
+                coluna.className = "inv-grafico-coluna";
+                coluna.style.backgroundColor = cor;
+
+                coluna.style.height =
+                    `${Math.max(
+                        2,
+                        quantidade / maximo * 150
+                    )}px`;
+
+                item.append(numero, coluna);
+                area.append(item);
+
+                // Nome do modelo abaixo.
+
+                const rotulo = document.createElement("div");
+                rotulo.className = "inv-grafico-rotulo";
+
+                const texto = document.createElement("span");
+                texto.textContent = modelo;
+                texto.title = modelo;
+
+                rotulo.append(texto);
+                rotulos.append(rotulo);
+            });
+
+            destino.append(eixo, area, rotulos);
+        };
+
+        // Máquinas: Azul Royal.
+
+        montar(
+            "invGraficoMaquinas",
+            "invResumoMaquinas",
+            itensDoGrafico(
+                "maquina",
+                "invFiltroGraficoMaquinas"
+            ),
+            "#1769E8"
+        );
+
+        // Acessórios: Azul Ciano.
+
+        montar(
+            "invGraficoAcessorios",
+            "invResumoAcessorios",
+            itensDoGrafico(
+                "acessorio",
+                "invFiltroGraficoAcessorios"
+            ),
+            "#18A8DB"
+        );
+    }
+
+    /* ======================================================
+       VALIDAR QUANTIDADES
+       ====================================================== */
 
     function validarQuantidade(valor) {
         if (valor === "") return true;
@@ -1339,6 +2251,7 @@
 
     function renderizar() {
         atualizarIndicadores();
+        renderizarGraficos();
         renderizarTabela();
 
         el("invFinalizado").hidden = !finalizado;
@@ -1361,9 +2274,6 @@
                 finalizado || gravando;
         });
     }
-
-
-
 
     /* ======================================================
        GERAR REGISTRO
@@ -1477,7 +2387,7 @@
             // Confere se o estoque permaneceu
             // inalterado durante a contagem.
 
-            const atual = await consultarEstoque();
+                        const atual = await consultarEstoque();
 
             if (
                 atual.revisao !== referencia.revisao ||
@@ -1567,8 +2477,6 @@
             renderizar();
         }
     }
-
-
 
     /* ======================================================
        APROVAÇÃO DOS AJUSTES
@@ -1719,13 +2627,15 @@
        HISTÓRICO COMPARTILHADO
        ====================================================== */
 
-    async function carregarHistorico() {
+        async function carregarHistorico() {
         if (carregandoHistorico) return;
 
         carregandoHistorico = true;
 
         try {
             await usuario();
+
+            // Carrega o histórico de inventários.
 
             const { data, error } = await cliente()
                 .from(TABELA)
@@ -1743,9 +2653,80 @@
 
             historico = data || [];
 
+            // Limpa o resultado anterior para evitar
+            // mostrar dados desatualizados.
+
+            ultimoInventario = null;
+
+            if (historico.length > 0) {
+                const idUltimo = historico[0].id;
+
+                // Recupera as quantidades físicas
+                // de cada modelo e de cada local.
+
+                const {
+                    data: inventario,
+                    error: erroInventario
+                } = await cliente()
+                    .from(TABELA)
+                    .select(
+                        "id,data_inventario,total_fisico," +
+                        "modelos_contados,divergencias,registros"
+                    )
+                    .eq("id", idUltimo)
+                    .single();
+
+                if (erroInventario) {
+                    throw erroInventario;
+                }
+
+                ultimoInventario = inventario;
+            }
+
+            // Atualiza a data apresentada no painel.
+
+            const ultimaData = el("invUltimaData");
+
+            if (ultimaData) {
+                ultimaData.textContent = ultimoInventario
+                    ? formatarData(
+                        ultimoInventario.data_inventario
+                    )
+                    : "Nenhum registro";
+
+                if (ultimoInventario) {
+                    ultimaData.title =
+                        "Modelos registrados: " +
+                        ultimoInventario.modelos_contados +
+                        " | Total físico: " +
+                        ultimoInventario.total_fisico +
+                        " | Divergências: " +
+                        ultimoInventario.divergencias;
+                } else {
+                    ultimaData.removeAttribute("title");
+                }
+            }
+
+            // Atualiza os gráficos com a contagem física.
+
+            renderizarGraficos();
+
+            // Mantém o histórico disponível.
+
             renderizarHistorico();
 
         } catch (erro) {
+            ultimoInventario = null;
+
+            const ultimaData = el("invUltimaData");
+
+            if (ultimaData) {
+                ultimaData.textContent = "Indisponível";
+                ultimaData.removeAttribute("title");
+            }
+
+            renderizarGraficos();
+
             mensagem(
                 "Erro ao carregar o histórico: " +
                 erro.message,
@@ -1756,7 +2737,6 @@
             carregandoHistorico = false;
         }
     }
-
     /* ======================================================
        MOSTRAR HISTÓRICO NA TABELA
        ====================================================== */
@@ -1847,8 +2827,6 @@
         });
     }
 
-
-
     /* ======================================================
        VISUALIZAR INVENTÁRIO ANTERIOR
        ====================================================== */
@@ -1916,7 +2894,8 @@
             const tbody = document.createElement("tbody");
 
             (data.registros || []).forEach(item => {
-                const tr = document.createElement("tr");
+
+                                const tr = document.createElement("tr");
 
                 [
                     item.modelo,
@@ -2071,8 +3050,6 @@
         renderizar();
     }
 
-
-
     /* ======================================================
        EXPORTAR CSV
        ====================================================== */
@@ -2202,6 +3179,29 @@
        ====================================================== */
 
     function configurarEventos() {
+
+        el("invLocalGraficos")?.addEventListener("change", event => {
+            ["invFiltroGraficoMaquinas", "invFiltroGraficoAcessorios"].forEach(id => {
+                if (el(id)) el(id).value = event.target.value;
+            });
+            renderizarGraficos();
+        });
+
+        /* ==============================================
+           FILTROS DOS GRÁFICOS
+           ============================================== */
+
+        [
+            "invFiltroGraficoMaquinas",
+            "invFiltroGraficoAcessorios"
+        ].forEach(id => {
+
+            el(id)?.addEventListener(
+                "change",
+                renderizarGraficos
+            );
+
+        });
 
         // Alternar entre Estoque Principal e Show Room.
 
@@ -2341,3 +3341,4 @@
     }
 
 })();
+
